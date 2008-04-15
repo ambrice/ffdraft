@@ -1,0 +1,593 @@
+#!/usr/bin/python
+#
+# Copyright (C) 2007 Aaron Brice
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# Read more about GNU General Public License :http://www.gnu.org/licenses/gpl.txt
+#
+import sys
+import re
+from string import join
+from PyQt4 import QtCore, QtGui
+from ui_mainwidget import Ui_MainWidget
+from ui_teamdialog import Ui_TeamDialog
+from ui_addplayerdialog import Ui_AddPlayerDialog
+
+class MainWindow(QtGui.QMainWindow):
+    def __init__(self):
+        QtGui.QMainWindow.__init__(self)
+
+        self.createActions()
+        self.createMenus()
+        self.createStatusBar()
+        self.mainWidget = MainWidget()
+        self.setCentralWidget(self.mainWidget)
+        self.setWindowTitle("Fantasy Football Draft")
+        self.version = 1.0
+
+    def createActions(self):
+        self.loadAct = QtGui.QAction("&Load", self)
+        self.loadAct.setShortcut("Ctrl+L")
+        self.loadAct.setStatusTip("Load draft from file")
+        self.connect(self.loadAct, QtCore.SIGNAL("triggered()"), self.load)
+
+        self.saveAsAct = QtGui.QAction("Save &As", self)
+        self.saveAsAct.setStatusTip("Save draft to file")
+        self.connect(self.saveAsAct, QtCore.SIGNAL("triggered()"), self.save_as)
+
+        self.saveAct = QtGui.QAction("&Save", self)
+        self.saveAct.setShortcut("Ctrl+S")
+        self.saveAct.setStatusTip("Save draft to file")
+        self.connect(self.saveAct, QtCore.SIGNAL("triggered()"), self.save)
+
+        self.exportAct = QtGui.QAction("&Export", self)
+        self.exportAct.setShortcut("Ctrl+E")
+        self.exportAct.setStatusTip("Export draft results to a text file")
+        self.connect(self.exportAct, QtCore.SIGNAL("triggered()"), self.export)
+
+        self.exitAct = QtGui.QAction("E&xit", self)
+        self.exitAct.setShortcut("Ctrl+Q")
+        self.exitAct.setStatusTip("Exit the application")
+        self.connect(self.exitAct, QtCore.SIGNAL("triggered()"), self, QtCore.SLOT("close()"))
+
+        self.teamAct = QtGui.QAction("&Configure Teams", self)
+        self.teamAct.setShortcut("Ctrl+T")
+        self.teamAct.setStatusTip("Add/Remove teams from the draft")
+        self.connect(self.teamAct, QtCore.SIGNAL("triggered()"), self.edit_teams)
+
+        self.extraAct = QtGui.QAction("&Add Extra Player", self)
+        self.extraAct.setShortcut("Ctrl+A")
+        self.extraAct.setStatusTip("Add an extra player to a team, outside of the draft")
+        self.connect(self.extraAct, QtCore.SIGNAL("triggered()"), self.extra_player)
+        
+        self.removeAct = QtGui.QAction("&Remove Player", self)
+        self.removeAct.setShortcut("Ctrl+R")
+        self.removeAct.setStatusTip("Remove a player from a team")
+        self.connect(self.removeAct, QtCore.SIGNAL("triggered()"), self.remove_player)
+
+        self.draftAct = QtGui.QAction("&Draft Unlisted Player", self)
+        self.draftAct.setShortcut("Ctrl+D")
+        self.draftAct.setStatusTip("Draft a player that's not listed in the available player table")
+        self.connect(self.draftAct, QtCore.SIGNAL("triggered()"), self.draft_unlisted_player)
+
+        self.aboutAct = QtGui.QAction("About FFD", self)
+        self.aboutAct.setStatusTip("About Fantasy Football Draft")
+        self.connect(self.aboutAct, QtCore.SIGNAL("triggered()"), self.about)
+
+        self.aboutQtAct = QtGui.QAction("About Qt", self)
+        self.aboutQtAct.setStatusTip(self.tr("About the Qt GUI library"))
+        self.connect(self.aboutQtAct, QtCore.SIGNAL("triggered()"), QtGui.qApp.aboutQt)
+
+    def createMenus(self):
+        self.fileMenu = self.menuBar().addMenu("&File")
+        self.fileMenu.addAction(self.loadAct)
+        self.fileMenu.addAction(self.saveAsAct)
+        self.fileMenu.addAction(self.saveAct)
+        self.fileMenu.addAction(self.exportAct)
+        self.fileMenu.addSeparator()
+        self.fileMenu.addAction(self.exitAct)
+
+        self.editMenu = self.menuBar().addMenu("&Edit")
+        self.editMenu.addAction(self.teamAct)
+        self.editMenu.addAction(self.extraAct)
+        self.editMenu.addAction(self.removeAct)
+        self.editMenu.addSeparator()
+        self.editMenu.addAction(self.draftAct)
+
+        self.helpMenu = self.menuBar().addMenu("&Help")
+        self.helpMenu.addAction(self.aboutAct)
+        self.helpMenu.addAction(self.aboutQtAct)
+
+    def createStatusBar(self):
+        self.statusBar().showMessage("Ready")
+
+    def edit_teams(self):
+        self.mainWidget.edit_teams()
+
+    def save_as(self):
+        self.mainWidget.save_as()
+
+    def save(self):
+        self.mainWidget.save()
+
+    def load(self):
+        self.mainWidget.load()
+
+    def export(self):
+        self.mainWidget.export()
+
+    def extra_player(self):
+        self.mainWidget.extra_player()
+
+    def remove_player(self):
+        self.mainWidget.remove_player()
+
+    def draft_unlisted_player(self):
+        self.mainWidget.draft_unlisted_player()
+
+    def about(self):
+        QtGui.QMessageBox.about(self, "About Fantasy Football Draft",
+                "Fantasy Football Draft version " + str(self.version) + "\n\n"
+                +"Copyright (C) 2007 Aaron Brice (aaron.brice@gmail.com) \n\n"
+                +"This program is Free Software, licensed under the GPLv2\n"
+                +"See the file COPYING for details\n")
+
+
+class MainWidget(QtGui.QWidget, Ui_MainWidget):
+    def __init__(self, parent = None):
+        QtGui.QWidget.__init__(self, parent)
+
+        self.setupUi(self)
+
+        self.splitter.setSizes([450, 150])
+
+        # Designer doesn't have QTabBar, only QTabWidget, so I have to insert it manually
+        self.tab_bar = QtGui.QTabBar(self)
+        self.tab_bar.addTab("All")
+        self.tab_bar.addTab("RB")
+        self.tab_bar.addTab("QB")
+        self.tab_bar.addTab("WR")
+        self.tab_bar.addTab("TE")
+        self.tab_bar.addTab("K")
+        self.tab_bar.addTab("DEF")
+        self.vboxlayout1.insertWidget(1, self.tab_bar)
+
+        self.avail_model = QtGui.QStandardItemModel()
+        self.filtered_model = CustomSortFilterProxyModel()
+        self.filtered_model.setSourceModel(self.avail_model)
+        self.avail_view.setModel(self.filtered_model)
+
+        self.draft_model = QtGui.QStandardItemModel()
+        self.drafted_view.setModel(self.draft_model)
+
+        self.connect(self.avail_view, QtCore.SIGNAL("doubleClicked(const QModelIndex&)"), self.draft_player)
+        self.connect(self.tab_bar, QtCore.SIGNAL("currentChanged(int)"), self.filter_avail)
+
+        self.current_round = 1
+        self.current_draft_idx = 0
+        self.team_list = []
+        self.saved_rows = {}
+
+        self.save_file = ""
+        self.open_file("playerdata.csv")
+
+    def open_file(self, filename):
+        lines = []
+
+        f = open(filename)
+        for line in f:
+            lines.append(line.strip())
+        f.close()
+        self.load_avail(lines)
+
+    def edit_teams(self):
+        dlg = TeamDialog(self.team_list)
+        if (dlg.exec_() == QtGui.QDialog.Accepted):
+            self.team_list = dlg.get_team_list()
+            self.set_draft_view()
+
+    def set_draft_view(self):
+        self.draft_model.clear()
+
+        self.draft_model.setHorizontalHeaderLabels(['Drafted Players'])
+        parent = self.draft_model.invisibleRootItem()
+        for team in self.team_list:
+            item = QtGui.QStandardItem(team)
+            parent.appendRow(item)
+
+        self.current_round = 1
+        self.round_field.setText(str(self.current_round))
+        self.current_draft_idx = 0
+        self.drafting_field.setText(self.draft_model.data(self.draft_model.index(self.current_draft_idx, 0)).toString())
+        self.next_field.setText(self.draft_model.data(self.draft_model.index(self.next_draft_idx(), 0)).toString())
+
+    def next_draft_idx(self):
+        if self.current_round % 2 != 0:
+            # Odd numbered round, index goes up
+            if self.current_draft_idx != self.draft_model.rowCount() - 1:
+                return self.current_draft_idx + 1
+            else:
+                return self.current_draft_idx
+        else:
+            # Even numbered round, index goes down
+            if self.current_draft_idx != 0:
+                return self.current_draft_idx - 1
+            else:
+                return self.current_draft_idx
+
+    def draft_player(self, filtered_idx):
+        filtered_row = filtered_idx.row()
+        name = self.filtered_model.data(self.filtered_model.index(filtered_row, 0)).toString()
+        position = self.filtered_model.data(self.filtered_model.index(filtered_row, 2)).toString()
+        bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString()
+        draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
+        
+        item = QtGui.QStandardItem(draft_string)
+        self.draft_model.item(self.current_draft_idx).appendRow(item)
+
+        avail_idx = self.filtered_model.mapToSource(filtered_idx)
+        self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
+
+        next_idx = self.next_draft_idx()
+        if next_idx == self.current_draft_idx:
+            self.current_round += 1
+
+        self.current_draft_idx = next_idx
+        self.round_field.setText(str(self.current_round))
+        self.drafting_field.setText(self.draft_model.data(self.draft_model.index(self.current_draft_idx, 0)).toString())
+        self.next_field.setText(self.draft_model.data(self.draft_model.index(self.next_draft_idx(), 0)).toString())
+
+        # Highlight the currently drafting player
+        for row in range(self.draft_model.rowCount()):
+            font = self.draft_model.item(row).font()
+            if row == self.current_draft_idx:
+                font.setBold(True)
+            else:
+                font.setBold(False)
+            self.draft_model.item(row).setFont(font)
+
+        # Make sure the current team is visible in the treeview scroll area
+        self.drafted_view.scrollTo(self.draft_model.index(self.current_draft_idx, 0), QtGui.QAbstractItemView.PositionAtTop)
+
+    def draft_unlisted_player(self):
+        dlg = AddPlayerDialog()
+        if (dlg.exec_() != QtGui.QDialog.Accepted):
+            return
+        name = dlg.player_name_field.text()
+        if name == QtCore.QString():
+            return
+        position = dlg.position_combo_box.currentText()
+        draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: ?)"
+
+        item = QtGui.QStandardItem(draft_string)
+        self.draft_model.item(self.current_draft_idx).appendRow(item)
+
+        next_idx = self.next_draft_idx()
+        if next_idx == self.current_draft_idx:
+            self.current_round += 1
+
+        self.current_draft_idx = next_idx
+        self.round_field.setText(str(self.current_round))
+        self.drafting_field.setText(self.draft_model.data(self.draft_model.index(self.current_draft_idx, 0)).toString())
+        self.next_field.setText(self.draft_model.data(self.draft_model.index(self.next_draft_idx(), 0)).toString())
+
+        # Highlight the currently drafting player
+        for row in range(self.draft_model.rowCount()):
+            font = self.draft_model.item(row).font()
+            if row == self.current_draft_idx:
+                font.setBold(True)
+            else:
+                font.setBold(False)
+            self.draft_model.item(row).setFont(font)
+
+        # Make sure the current team is visible in the treeview scroll area
+        self.drafted_view.scrollTo(self.draft_model.index(self.current_draft_idx, 0), QtGui.QAbstractItemView.PositionAtTop)
+
+    def filter_avail(self, tab_idx):
+        position = self.tab_bar.tabText(tab_idx)
+        if position == "All":
+            self.filtered_model.setFilterKeyColumn(2)
+            self.filtered_model.setFilterFixedString(QtCore.QString())
+        else:
+            self.filtered_model.setFilterKeyColumn(2)
+            self.filtered_model.setFilterFixedString(position)
+
+    def save_as(self):
+        self.save_file = QtGui.QFileDialog.getSaveFileName(None, "Save File", QtCore.QDir.homePath(), "FF Draft (*.ffd)")
+        if self.save_file == "":
+            return
+        self.save()
+
+    def save(self):
+        if self.save_file == "":
+            self.save_as()
+        else:
+            f = open(self.save_file, 'w')
+            f.write("[State]\n")
+            f.write("current_round = " + str(self.current_round) + "\n")
+            f.write("current_draft_idx = " + str(self.current_draft_idx) + "\n")
+            f.write("drafting_field = " + str(self.drafting_field.text()) + "\n")
+            f.write("next_field = " + str(self.next_field.text()) + "\n")
+            f.write("team_list = " + join([ str(team) for team in self.team_list ], ',') + "\n")
+
+            f.write("[Drafted]\n")
+            team_count = self.draft_model.rowCount()
+            for team_idx in range(team_count):
+                item = self.draft_model.item(team_idx)
+                team_name = str(item.text())
+                drafted_players = [ str(item.child(player_idx).text()) for player_idx in range(item.rowCount()) ]
+                drafted_players.insert(0, team_name)
+                f.write(join(drafted_players, ",") + "\n")
+
+            f.close()
+
+    def load(self):
+        loadfile = QtGui.QFileDialog.getOpenFileName(None, "Open File", QtCore.QDir.homePath(), "FF Draft (*.ffd)")
+        if loadfile == QtCore.QString():
+            return
+        sectionrx = re.compile(r'\[(\w+)\]')
+        f = open(loadfile, 'r')
+        section = None
+        file_lines = {}
+        for line in f:
+            line = line.strip()
+            section_match = sectionrx.match(line)
+            if section_match:
+                # Start of new section
+                section = section_match.group(1)
+                file_lines[section] = []
+            else:
+                file_lines[section].append(line)
+
+        self.load_state(file_lines['State'])
+        self.load_draft(file_lines['Drafted'])
+        self.update_avail()
+        self.save_file = loadfile
+
+    def load_state(self, lines):
+        for line in lines:
+            (var, value) = line.split(' = ')
+            if var == "current_round":
+                self.current_round = int(value)
+                self.round_field.setText(str(self.current_round))
+            elif var == "current_draft_idx":
+                self.current_draft_idx = int(value)
+            elif var == "drafting_field":
+                self.drafting_field.setText(value)
+            elif var == "next_field":
+                self.next_field.setText(value)
+            elif var == "team_list":
+                self.team_list = [ QtCore.QString(team) for team in value.split(',') ]
+
+    def load_draft(self, lines):
+        self.draft_model.clear()
+
+        self.draft_model.setHorizontalHeaderLabels(['Drafted Players'])
+        parent = self.draft_model.invisibleRootItem()
+        for line in lines:
+            players = line.split(',')
+            team = players.pop(0)
+            item = QtGui.QStandardItem(team)
+            parent.appendRow(item)
+            for player in players:
+                player_item = QtGui.QStandardItem(player)
+                item.appendRow(player_item)
+
+        # Highlight the currently drafting player
+        for row in range(self.draft_model.rowCount()):
+            font = self.draft_model.item(row).font()
+            if row == self.current_draft_idx:
+                font.setBold(True)
+            else:
+                font.setBold(False)
+            self.draft_model.item(row).setFont(font)
+
+    def load_avail(self, lines):
+        self.avail_model.clear()
+
+        # First line is headers
+        headers = lines.pop(0).strip().split(',')
+        self.avail_model.setHorizontalHeaderLabels(headers)
+
+        for line in lines:
+            item_list = [ QtGui.QStandardItem(item) for item in line.strip().split(',') ]
+            self.avail_model.appendRow(item_list)
+
+        self.avail_view.resizeColumnsToContents()
+
+    def update_avail(self):
+        # Loop through the drafted model and remove all the drafted players from the available model
+        root_item = self.draft_model.invisibleRootItem()
+        teams = [ root_item.child(i) for i in range(root_item.rowCount()) ]
+        for team in teams:
+            players = [ team.child(i) for i in range(team.rowCount()) ]
+            for player in players:
+                draft_string = str(player.text())
+                m = re.match(r'^\d+\) \w+: (.+)( \(Bye: [\?\d]+\))$', draft_string)
+                if m:
+                    name = m.group(1)
+                    item_list = self.avail_model.findItems(name)
+                    for item in item_list:
+                        self.saved_rows[draft_string] = self.avail_model.takeRow(item.row())
+
+    def extra_player(self):
+        # Find the selected player
+        filtered_indexes = self.avail_view.selectedIndexes()
+        if len(filtered_indexes) == 0:
+            QtGui.QMessageBox.warning(self, "Error", "Please select the player to add")
+            return
+        filtered_idx = filtered_indexes.pop(0)
+
+        # Find the selected team
+        drafted_indexes = self.drafted_view.selectedIndexes()
+        if len(drafted_indexes) == 0:
+            QtGui.QMessageBox.warning(self, "Error", "Please select a team to add the player to")
+            return
+        drafted_idx = drafted_indexes.pop(0)
+        if drafted_idx.parent() != QtCore.QModelIndex():
+            # Child selected, select parent (team)
+            drafted_idx = drafted_idx.parent()
+
+        # Add the selected player to the selected team
+        filtered_row = filtered_idx.row()
+        name = self.filtered_model.data(self.filtered_model.index(filtered_row, 0)).toString()
+        position = self.filtered_model.data(self.filtered_model.index(filtered_row, 2)).toString()
+        bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString() 
+        draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
+        
+        item = QtGui.QStandardItem(draft_string)
+        self.draft_model.itemFromIndex(drafted_idx).appendRow(item)
+
+        avail_idx = self.filtered_model.mapToSource(filtered_idx)
+        self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
+
+    def remove_player(self):
+        # Find the selected team's player
+        drafted_indexes = self.drafted_view.selectedIndexes()
+        if len(drafted_indexes) == 0:
+            QtGui.QMessageBox.warning(self, "Error", "Please select a player to remove")
+            return
+        drafted_idx = drafted_indexes.pop(0)
+        if drafted_idx.parent() == QtCore.QModelIndex():
+            QtGui.QMessageBox.warning(self, "Error", "Please select a player to remove")
+            return
+        team_idx = drafted_idx.parent()
+        draft_string = str(self.draft_model.data(drafted_idx).toString())
+        # Remove the player from the team
+        self.draft_model.removeRows(drafted_idx.row(), 1, team_idx)
+        # Restore the player to the available model
+        if self.saved_rows.has_key(draft_string):
+            self.avail_model.insertRow(0, self.saved_rows[draft_string])
+            del self.saved_rows[draft_string]
+
+    def export(self):
+        export_file = QtGui.QFileDialog.getSaveFileName(None, "Export File", QtCore.QDir.homePath(), "Text File (*.txt)")
+        if export_file == "":
+            return
+        f = open(export_file, 'w')
+        # Loop through the draft model and write all the drafted players
+        root_item = self.draft_model.invisibleRootItem()
+        teams = [ root_item.child(i) for i in range(root_item.rowCount()) ]
+        for team in teams:
+            f.write(team.text() + "\n")
+            f.write("-" * len(str(team.text())))
+            f.write("\n")
+            players = [ team.child(i) for i in range(team.rowCount()) ]
+            for player in players:
+                f.write(player.text() + "\n")
+            f.write("\n\n")
+        f.close()
+
+
+class CustomSortFilterProxyModel(QtGui.QSortFilterProxyModel):
+    def __init__(self, parent = None):
+        QtGui.QSortFilterProxyModel.__init__(self, parent)
+        self.numrx = re.compile(r'^-?\d+$')
+
+    def lessThan(self, left, right):
+        ldata = str(left.data().toString())
+        rdata = str(right.data().toString())
+        if ldata == "-":
+            return True
+        elif rdata == "-":
+            return False
+        elif self.numrx.match(ldata) != None and self.numrx.match(rdata) != None:
+            # Both numbers, do numeric comparison
+            return int(ldata) < int(rdata)
+        else:
+            return ldata < rdata
+
+
+class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
+    def __init__(self, team_list = [], parent = None):
+        QtGui.QDialog.__init__(self, parent)
+
+        self.setupUi(self)
+
+        self.model = QtGui.QStringListModel()
+        self.model.setStringList(team_list)
+        self.team_list_view.setModel(self.model)
+
+        self.connect(self.add_button, QtCore.SIGNAL("clicked()"), self.add_team)
+        self.connect(self.move_up_button, QtCore.SIGNAL("clicked()"), self.move_team_up)
+        self.connect(self.move_down_button, QtCore.SIGNAL("clicked()"), self.move_team_down)
+
+    def add_team(self):
+        team = self.team_name_field.text()
+        manager = self.manager_name_field.text()
+
+        if team == "":
+            return
+
+        full_name = team + " (" + manager + ")"
+
+        new_row = self.model.rowCount()
+        self.model.insertRows(new_row, 1)
+        idx = self.model.index(new_row)
+        self.model.setData(idx, QtCore.QVariant(full_name))
+        self.team_name_field.clear()
+        self.manager_name_field.clear()
+        self.team_name_field.setFocus()
+
+    def move_team_down(self):
+        row = self.team_list_view.selectedIndexes().pop(0).row()
+        if row == self.model.rowCount() - 1:
+            # Already at bottom of list
+            return
+        old_idx = self.model.createIndex(row, 0)
+        new_idx = self.model.createIndex(row + 1, 0)
+        old_value = self.model.data(old_idx, QtCore.Qt.EditRole)
+        new_value = self.model.data(new_idx, QtCore.Qt.EditRole)
+        self.model.setData(old_idx, new_value)
+        self.model.setData(new_idx, old_value)
+        self.team_list_view.selectionModel().select(new_idx, QtGui.QItemSelectionModel.ClearAndSelect)
+
+    def move_team_up(self):
+        row = self.team_list_view.selectedIndexes().pop(0).row()
+        if row == 0:
+            # Already at top of list
+            return
+        old_idx = self.model.createIndex(row, 0)
+        new_idx = self.model.createIndex(row - 1, 0)
+        old_value = self.model.data(old_idx, QtCore.Qt.EditRole)
+        new_value = self.model.data(new_idx, QtCore.Qt.EditRole)
+        self.model.setData(old_idx, new_value)
+        self.model.setData(new_idx, old_value)
+        self.team_list_view.selectionModel().select(new_idx, QtGui.QItemSelectionModel.ClearAndSelect)
+
+    def get_team_list(self):
+        return self.model.stringList()
+
+
+class AddPlayerDialog(QtGui.QDialog, Ui_AddPlayerDialog):
+    def __init__(self, parent = None):
+        QtGui.QDialog.__init__(self, parent)
+
+        self.setupUi(self)
+
+        self.position_combo_box.addItem("RB")
+        self.position_combo_box.addItem("QB")
+        self.position_combo_box.addItem("WR")
+        self.position_combo_box.addItem("TE")
+        self.position_combo_box.addItem("K")
+        self.position_combo_box.addItem("DEF")
+
+if __name__ == "__main__":
+    app = QtGui.QApplication(sys.argv)
+    mainWin = MainWindow()
+    mainWin.resize(800,600)
+    mainWin.show()
+    sys.exit(app.exec_())
+
