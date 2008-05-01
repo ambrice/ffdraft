@@ -151,6 +151,11 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         self.setupUi(self)
 
+        self.timer = EggTimer(150, self)
+        self.connect(self.timer, QtCore.SIGNAL("update(QString)"), self.timerDisplay, QtCore.SLOT("display(QString)"))
+        self.connect(self.pause_button, QtCore.SIGNAL("clicked()"), self.pause_timer)
+        self.timer.reset()
+
         self.splitter.setSizes([450, 150])
 
         # Designer doesn't have QTabBar, only QTabWidget, so I have to insert it manually
@@ -182,6 +187,14 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         self.save_file = ""
         self.open_file("playerdata.csv")
+
+    def pause_timer(self):
+        if self.pause_button.text() == "Start":
+            self.timer.start()
+            self.pause_button.setText("Pause")
+        elif self.pause_button.text() == "Pause":
+            self.timer.pause()
+            self.pause_button.setText("Start")
 
     def open_file(self, filename):
         lines = []
@@ -583,6 +596,40 @@ class AddPlayerDialog(QtGui.QDialog, Ui_AddPlayerDialog):
         self.position_combo_box.addItem("TE")
         self.position_combo_box.addItem("K")
         self.position_combo_box.addItem("DEF")
+
+class EggTimer(QtCore.QObject):
+    def __init__(self, countdown, parent = None):
+        QtCore.QObject.__init__(self, parent)
+
+        self.timer = QtCore.QTimer()
+        self.countdown = int(countdown)
+        self.current_time = self.countdown
+
+        self.connect(self.timer, QtCore.SIGNAL("timeout()"), self.send_update)
+
+    def reset(self):
+        self.current_time = self.countdown
+        self.emit(QtCore.SIGNAL("update(QString)"), self.time_str(self.current_time))
+
+    def start(self):
+        self.timer.start(1000)
+
+    def pause(self):
+        self.timer.stop()
+
+    def send_update(self):
+        self.current_time -= 1
+        self.emit(QtCore.SIGNAL("update(QString)"), self.time_str(self.current_time))
+        if self.current_time == 0:
+            self.timer.stop()
+            self.emit(QtCore.SIGNAL("expired()"))
+
+    def time_str(self, time):
+        hours = str(int(time) / 60)
+        minutes = str(int(time) % 60)
+        if (int(minutes) < 10):
+            minutes = "0" + minutes
+        return str(hours) + ":" + str(minutes)
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
