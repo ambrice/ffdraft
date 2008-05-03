@@ -2,32 +2,29 @@
 
 # Form implementation generated from reading ui file 'ui_teamdialog.ui'
 #
-# Created: Tue Aug 21 20:15:51 2007
-#      by: PyQt4 UI code generator 4.1
+# Created: Thu May  1 15:17:04 2008
+#      by: PyQt4 UI code generator 4.3.3
 #
 # WARNING! All changes made in this file will be lost!
 
-import sys
 from PyQt4 import QtCore, QtGui
 
 class Ui_TeamDialog(object):
     def setupUi(self, TeamDialog):
         TeamDialog.setObjectName("TeamDialog")
-        TeamDialog.resize(QtCore.QSize(QtCore.QRect(0,0,452,304).size()).expandedTo(TeamDialog.minimumSizeHint()))
+        TeamDialog.resize(QtCore.QSize(QtCore.QRect(0,0,452,477).size()).expandedTo(TeamDialog.minimumSizeHint()))
 
         self.vboxlayout = QtGui.QVBoxLayout(TeamDialog)
-        self.vboxlayout.setMargin(9)
-        self.vboxlayout.setSpacing(6)
         self.vboxlayout.setObjectName("vboxlayout")
 
         self.hboxlayout = QtGui.QHBoxLayout()
-        self.hboxlayout.setMargin(0)
         self.hboxlayout.setSpacing(6)
+        self.hboxlayout.setMargin(0)
         self.hboxlayout.setObjectName("hboxlayout")
 
         self.vboxlayout1 = QtGui.QVBoxLayout()
-        self.vboxlayout1.setMargin(0)
         self.vboxlayout1.setSpacing(6)
+        self.vboxlayout1.setMargin(0)
         self.vboxlayout1.setObjectName("vboxlayout1")
 
         self.label = QtGui.QLabel(TeamDialog)
@@ -59,8 +56,8 @@ class Ui_TeamDialog(object):
         self.hboxlayout.addWidget(self.team_list_view)
 
         self.vboxlayout2 = QtGui.QVBoxLayout()
-        self.vboxlayout2.setMargin(0)
         self.vboxlayout2.setSpacing(6)
+        self.vboxlayout2.setMargin(0)
         self.vboxlayout2.setObjectName("vboxlayout2")
 
         spacerItem1 = QtGui.QSpacerItem(20,40,QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Expanding)
@@ -68,7 +65,7 @@ class Ui_TeamDialog(object):
 
         self.move_up_button = QtGui.QPushButton(TeamDialog)
 
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Policy(0),QtGui.QSizePolicy.Policy(0))
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.move_up_button.sizePolicy().hasHeightForWidth())
@@ -79,7 +76,7 @@ class Ui_TeamDialog(object):
 
         self.move_down_button = QtGui.QPushButton(TeamDialog)
 
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Policy(0),QtGui.QSizePolicy.Policy(0))
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.move_down_button.sizePolicy().hasHeightForWidth())
@@ -92,6 +89,28 @@ class Ui_TeamDialog(object):
         self.vboxlayout2.addItem(spacerItem2)
         self.hboxlayout.addLayout(self.vboxlayout2)
         self.vboxlayout.addLayout(self.hboxlayout)
+
+        self.line = QtGui.QFrame(TeamDialog)
+        self.line.setFrameShape(QtGui.QFrame.HLine)
+        self.line.setFrameShadow(QtGui.QFrame.Sunken)
+        self.line.setObjectName("line")
+        self.vboxlayout.addWidget(self.line)
+
+        self.hboxlayout1 = QtGui.QHBoxLayout()
+        self.hboxlayout1.setObjectName("hboxlayout1")
+
+        self.label_3 = QtGui.QLabel(TeamDialog)
+        self.label_3.setObjectName("label_3")
+        self.hboxlayout1.addWidget(self.label_3)
+
+        self.timeEdit = QtGui.QTimeEdit(TeamDialog)
+        self.timeEdit.setMaximumTime(QtCore.QTime(13,0,59))
+        self.timeEdit.setObjectName("timeEdit")
+        self.hboxlayout1.addWidget(self.timeEdit)
+
+        spacerItem3 = QtGui.QSpacerItem(40,20,QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Minimum)
+        self.hboxlayout1.addItem(spacerItem3)
+        self.vboxlayout.addLayout(self.hboxlayout1)
 
         self.buttonBox = QtGui.QDialogButtonBox(TeamDialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
@@ -111,4 +130,6 @@ class Ui_TeamDialog(object):
         self.add_button.setText(QtGui.QApplication.translate("TeamDialog", "Add", None, QtGui.QApplication.UnicodeUTF8))
         self.move_up_button.setText(QtGui.QApplication.translate("TeamDialog", "/\\", None, QtGui.QApplication.UnicodeUTF8))
         self.move_down_button.setText(QtGui.QApplication.translate("TeamDialog", "\\/", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_3.setText(QtGui.QApplication.translate("TeamDialog", "Pick Time Limit", None, QtGui.QApplication.UnicodeUTF8))
+        self.timeEdit.setDisplayFormat(QtGui.QApplication.translate("TeamDialog", "m:ss", None, QtGui.QApplication.UnicodeUTF8))
 

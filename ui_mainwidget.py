@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui_mainwidget.ui'
 #
-# Created: Thu May  1 00:00:11 2008
+# Created: Fri May  2 18:20:23 2008
 #      by: PyQt4 UI code generator 4.3.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -119,9 +119,17 @@ class Ui_MainWidget(object):
         self.timerDisplay.setObjectName("timerDisplay")
         self.vboxlayout2.addWidget(self.timerDisplay)
 
+        self.hboxlayout1 = QtGui.QHBoxLayout()
+        self.hboxlayout1.setObjectName("hboxlayout1")
+
+        self.reset_button = QtGui.QPushButton(self.widget)
+        self.reset_button.setObjectName("reset_button")
+        self.hboxlayout1.addWidget(self.reset_button)
+
         self.pause_button = QtGui.QPushButton(self.widget)
         self.pause_button.setObjectName("pause_button")
-        self.vboxlayout2.addWidget(self.pause_button)
+        self.hboxlayout1.addWidget(self.pause_button)
+        self.vboxlayout2.addLayout(self.hboxlayout1)
         self.hboxlayout.addLayout(self.vboxlayout2)
         self.vboxlayout1.addLayout(self.hboxlayout)
 
@@ -159,5 +167,6 @@ class Ui_MainWidget(object):
         self.label.setText(QtGui.QApplication.translate("MainWidget", "Round:", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWidget", "Drafting: ", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("MainWidget", "Next:", None, QtGui.QApplication.UnicodeUTF8))
+        self.reset_button.setText(QtGui.QApplication.translate("MainWidget", "Reset", None, QtGui.QApplication.UnicodeUTF8))
         self.pause_button.setText(QtGui.QApplication.translate("MainWidget", "Start", None, QtGui.QApplication.UnicodeUTF8))
 

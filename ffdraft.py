@@ -151,10 +151,11 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         self.setupUi(self)
 
-        self.timer = EggTimer(150, self)
+        self.timer = EggTimer(self)
         self.connect(self.timer, QtCore.SIGNAL("update(QString)"), self.timerDisplay, QtCore.SLOT("display(QString)"))
+        self.connect(self.reset_button, QtCore.SIGNAL("clicked()"), self.timer.reset)
         self.connect(self.pause_button, QtCore.SIGNAL("clicked()"), self.pause_timer)
-        self.timer.reset()
+        self.connect(self.timer, QtCore.SIGNAL("expired()"), self.draft_best_player)
 
         self.splitter.setSizes([450, 150])
 
@@ -206,8 +207,9 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.load_avail(lines)
 
     def edit_teams(self):
-        dlg = TeamDialog(self.team_list)
+        dlg = TeamDialog(self.team_list, self.timer.countdown)
         if (dlg.exec_() == QtGui.QDialog.Accepted):
+            self.timer.set_countdown(dlg.get_time_limit())
             self.team_list = dlg.get_team_list()
             self.set_draft_view()
 
@@ -240,6 +242,18 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             else:
                 return self.current_draft_idx
 
+    def draft_best_player(self):
+        name = self.avail_model.data(self.avail_model.index(0,0)).toString()
+        position = self.avail_model.data(self.avail_model.index(0,2)).toString()
+        bye = self.avail_model.data(self.avail_model.index(0,3)).toString()
+        draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
+
+        item = QtGui.QStandardItem(draft_string)
+        self.draft_model.item(self.current_draft_idx).appendRow(item)
+
+        self.saved_rows[draft_string] = self.avail_model.takeRow(0)
+        self.next_team()
+
     def draft_player(self, filtered_idx):
         filtered_row = filtered_idx.row()
         name = self.filtered_model.data(self.filtered_model.index(filtered_row, 0)).toString()
@@ -252,27 +266,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         avail_idx = self.filtered_model.mapToSource(filtered_idx)
         self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
+        self.next_team()
 
-        next_idx = self.next_draft_idx()
-        if next_idx == self.current_draft_idx:
-            self.current_round += 1
-
-        self.current_draft_idx = next_idx
-        self.round_field.setText(str(self.current_round))
-        self.drafting_field.setText(self.draft_model.data(self.draft_model.index(self.current_draft_idx, 0)).toString())
-        self.next_field.setText(self.draft_model.data(self.draft_model.index(self.next_draft_idx(), 0)).toString())
-
-        # Highlight the currently drafting player
-        for row in range(self.draft_model.rowCount()):
-            font = self.draft_model.item(row).font()
-            if row == self.current_draft_idx:
-                font.setBold(True)
-            else:
-                font.setBold(False)
-            self.draft_model.item(row).setFont(font)
-
-        # Make sure the current team is visible in the treeview scroll area
-        self.drafted_view.scrollTo(self.draft_model.index(self.current_draft_idx, 0), QtGui.QAbstractItemView.PositionAtTop)
 
     def draft_unlisted_player(self):
         dlg = AddPlayerDialog()
@@ -286,7 +281,9 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         item = QtGui.QStandardItem(draft_string)
         self.draft_model.item(self.current_draft_idx).appendRow(item)
+        self.next_team()
 
+    def next_team(self):
         next_idx = self.next_draft_idx()
         if next_idx == self.current_draft_idx:
             self.current_round += 1
@@ -307,6 +304,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         # Make sure the current team is visible in the treeview scroll area
         self.drafted_view.scrollTo(self.draft_model.index(self.current_draft_idx, 0), QtGui.QAbstractItemView.PositionAtTop)
+
+        # Reset the timer and start it
+        self.timer.reset()
+        self.timer.start()
 
     def filter_avail(self, tab_idx):
         position = self.tab_bar.tabText(tab_idx)
@@ -334,6 +335,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             f.write("drafting_field = " + str(self.drafting_field.text()) + "\n")
             f.write("next_field = " + str(self.next_field.text()) + "\n")
             f.write("team_list = " + join([ str(team) for team in self.team_list ], ',') + "\n")
+            f.write("time_limit = " + str(self.timer.countdown) + "\n")
 
             f.write("[Drafted]\n")
             team_count = self.draft_model.rowCount()
@@ -383,6 +385,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 self.next_field.setText(value)
             elif var == "team_list":
                 self.team_list = [ QtCore.QString(team) for team in value.split(',') ]
+            elif var == "time_limit":
+                self.timer.set_countdown(int(value))
 
     def load_draft(self, lines):
         self.draft_model.clear()
@@ -524,7 +528,7 @@ class CustomSortFilterProxyModel(QtGui.QSortFilterProxyModel):
 
 
 class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
-    def __init__(self, team_list = [], parent = None):
+    def __init__(self, team_list = [], timer = 0, parent = None):
         QtGui.QDialog.__init__(self, parent)
 
         self.setupUi(self)
@@ -536,6 +540,13 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
         self.connect(self.add_button, QtCore.SIGNAL("clicked()"), self.add_team)
         self.connect(self.move_up_button, QtCore.SIGNAL("clicked()"), self.move_team_up)
         self.connect(self.move_down_button, QtCore.SIGNAL("clicked()"), self.move_team_down)
+
+        time = QtCore.QTime()
+        min = int(timer) / 60
+        sec = timer % 60
+        time.setHMS(0, min, sec)
+        self.timeEdit.setTime(time)
+
 
     def add_team(self):
         team = self.team_name_field.text()
@@ -583,6 +594,11 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
     def get_team_list(self):
         return self.model.stringList()
 
+    def get_time_limit(self):
+        sec = self.timeEdit.time().second()
+        min = self.timeEdit.time().minute()
+        return min * 60 + sec
+
 
 class AddPlayerDialog(QtGui.QDialog, Ui_AddPlayerDialog):
     def __init__(self, parent = None):
@@ -598,21 +614,25 @@ class AddPlayerDialog(QtGui.QDialog, Ui_AddPlayerDialog):
         self.position_combo_box.addItem("DEF")
 
 class EggTimer(QtCore.QObject):
-    def __init__(self, countdown, parent = None):
+    def __init__(self, parent = None):
         QtCore.QObject.__init__(self, parent)
 
         self.timer = QtCore.QTimer()
-        self.countdown = int(countdown)
-        self.current_time = self.countdown
-
         self.connect(self.timer, QtCore.SIGNAL("timeout()"), self.send_update)
+        self.countdown = 0
+
+    def set_countdown(self, countdown):
+        self.countdown = countdown
+        self.current_time = self.countdown
+        self.emit(QtCore.SIGNAL("update(QString)"), self.time_str(self.current_time))
 
     def reset(self):
         self.current_time = self.countdown
         self.emit(QtCore.SIGNAL("update(QString)"), self.time_str(self.current_time))
 
     def start(self):
-        self.timer.start(1000)
+        if self.countdown > 0:
+            self.timer.start(1000)
 
     def pause(self):
         self.timer.stop()
@@ -633,6 +653,12 @@ class EggTimer(QtCore.QObject):
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
+    f = open("ffdraft.css")
+    try:
+        css = f.read()
+        app.setStyleSheet(css);
+    finally:
+        f.close()
     mainWin = MainWindow()
     mainWin.resize(800,600)
     mainWin.show()
