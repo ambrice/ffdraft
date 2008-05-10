@@ -152,6 +152,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.setupUi(self)
 
         self.timer = EggTimer(self)
+        self.autopick = False
         self.connect(self.timer, QtCore.SIGNAL("update(QString)"), self.timerDisplay, QtCore.SLOT("display(QString)"))
         self.connect(self.reset_button, QtCore.SIGNAL("clicked()"), self.timer.reset)
         self.connect(self.pause_button, QtCore.SIGNAL("clicked()"), self.pause_timer)
@@ -207,9 +208,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.load_avail(lines)
 
     def edit_teams(self):
-        dlg = TeamDialog(self.team_list, self.timer.countdown)
+        dlg = TeamDialog(self.team_list, self.timer.countdown, self.autopick)
         if (dlg.exec_() == QtGui.QDialog.Accepted):
             self.timer.set_countdown(dlg.get_time_limit())
+            self.autopick = dlg.get_autopick()
             self.team_list = dlg.get_team_list()
             self.set_draft_view()
 
@@ -243,16 +245,17 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 return self.current_draft_idx
 
     def draft_best_player(self):
-        name = self.avail_model.data(self.avail_model.index(0,0)).toString()
-        position = self.avail_model.data(self.avail_model.index(0,2)).toString()
-        bye = self.avail_model.data(self.avail_model.index(0,3)).toString()
-        draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
+        if self.autopick:
+            name = self.avail_model.data(self.avail_model.index(0,0)).toString()
+            position = self.avail_model.data(self.avail_model.index(0,2)).toString()
+            bye = self.avail_model.data(self.avail_model.index(0,3)).toString()
+            draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
 
-        item = QtGui.QStandardItem(draft_string)
-        self.draft_model.item(self.current_draft_idx).appendRow(item)
+            item = QtGui.QStandardItem(draft_string)
+            self.draft_model.item(self.current_draft_idx).appendRow(item)
 
-        self.saved_rows[draft_string] = self.avail_model.takeRow(0)
-        self.next_team()
+            self.saved_rows[draft_string] = self.avail_model.takeRow(0)
+            self.next_team()
 
     def draft_player(self, filtered_idx):
         filtered_row = filtered_idx.row()
@@ -336,6 +339,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             f.write("next_field = " + str(self.next_field.text()) + "\n")
             f.write("team_list = " + join([ str(team) for team in self.team_list ], ',') + "\n")
             f.write("time_limit = " + str(self.timer.countdown) + "\n")
+            f.write("autopick = " + str(self.autopick) + "\n")
 
             f.write("[Drafted]\n")
             team_count = self.draft_model.rowCount()
@@ -387,6 +391,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 self.team_list = [ QtCore.QString(team) for team in value.split(',') ]
             elif var == "time_limit":
                 self.timer.set_countdown(int(value))
+            elif var == "autopick":
+                self.autopick = bool(value)
 
     def load_draft(self, lines):
         self.draft_model.clear()
@@ -528,7 +534,7 @@ class CustomSortFilterProxyModel(QtGui.QSortFilterProxyModel):
 
 
 class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
-    def __init__(self, team_list = [], timer = 0, parent = None):
+    def __init__(self, team_list = [], timer = 0, autopick = False, parent = None):
         QtGui.QDialog.__init__(self, parent)
 
         self.setupUi(self)
@@ -546,7 +552,7 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
         sec = timer % 60
         time.setHMS(0, min, sec)
         self.timeEdit.setTime(time)
-
+        self.autoPick.setChecked(True)
 
     def add_team(self):
         team = self.team_name_field.text()
@@ -598,6 +604,9 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
         sec = self.timeEdit.time().second()
         min = self.timeEdit.time().minute()
         return min * 60 + sec
+
+    def get_autopick(self):
+        return self.autoPick.isChecked()
 
 
 class AddPlayerDialog(QtGui.QDialog, Ui_AddPlayerDialog):

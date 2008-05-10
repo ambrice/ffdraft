@@ -208,6 +208,16 @@
       </widget>
      </item>
      <item>
+      <widget class="QCheckBox" name="autoPick" >
+       <property name="toolTip" >
+        <string>Automatically take top-rated player when timer expires</string>
+       </property>
+       <property name="text" >
+        <string>Auto-pick on expire?</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer>
        <property name="orientation" >
         <enum>Qt::Horizontal</enum>

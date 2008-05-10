@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui_teamdialog.ui'
 #
-# Created: Thu May  1 15:17:04 2008
+# Created: Fri May  9 16:46:25 2008
 #      by: PyQt4 UI code generator 4.3.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -108,6 +108,10 @@ class Ui_TeamDialog(object):
         self.timeEdit.setObjectName("timeEdit")
         self.hboxlayout1.addWidget(self.timeEdit)
 
+        self.autoPick = QtGui.QCheckBox(TeamDialog)
+        self.autoPick.setObjectName("autoPick")
+        self.hboxlayout1.addWidget(self.autoPick)
+
         spacerItem3 = QtGui.QSpacerItem(40,20,QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Minimum)
         self.hboxlayout1.addItem(spacerItem3)
         self.vboxlayout.addLayout(self.hboxlayout1)
@@ -132,4 +136,6 @@ class Ui_TeamDialog(object):
         self.move_down_button.setText(QtGui.QApplication.translate("TeamDialog", "\\/", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("TeamDialog", "Pick Time Limit", None, QtGui.QApplication.UnicodeUTF8))
         self.timeEdit.setDisplayFormat(QtGui.QApplication.translate("TeamDialog", "m:ss", None, QtGui.QApplication.UnicodeUTF8))
+        self.autoPick.setToolTip(QtGui.QApplication.translate("TeamDialog", "Automatically take top-rated player when timer expires", None, QtGui.QApplication.UnicodeUTF8))
+        self.autoPick.setText(QtGui.QApplication.translate("TeamDialog", "Auto-pick on expire?", None, QtGui.QApplication.UnicodeUTF8))
 
