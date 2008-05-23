@@ -125,6 +125,9 @@ class MainWindow(QtGui.QMainWindow):
     def load(self):
         self.mainWidget.load()
 
+    def load_file(self, file):
+        self.mainWidget.load_file(file)
+
     def export(self):
         self.mainWidget.export()
 
@@ -176,9 +179,6 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.filtered_model.setSourceModel(self.avail_model)
         self.avail_view.setModel(self.filtered_model)
 
-        self.draft_model = QtGui.QStandardItemModel()
-        self.drafted_view.setModel(self.draft_model)
-
         self.connect(self.avail_view, QtCore.SIGNAL("doubleClicked(const QModelIndex&)"), self.draft_player)
         self.connect(self.tab_bar, QtCore.SIGNAL("currentChanged(int)"), self.filter_avail)
 
@@ -212,28 +212,31 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         if (dlg.exec_() == QtGui.QDialog.Accepted):
             self.timer.set_countdown(dlg.get_time_limit())
             self.autopick = dlg.get_autopick()
+            old_team_list = self.team_list[:]
             self.team_list = dlg.get_team_list()
-            self.set_draft_view()
+            diff_list = [ i for i in range(len(old_team_list)) if old_team_list[i] != self.team_list[i] ]
+            if diff_list or (len(old_team_list) != len(self.team_list)):
+                self.set_draft_view()
 
     def set_draft_view(self):
-        self.draft_model.clear()
+        while self.drafted_view.count():
+            self.drafted_view.removeItem(0)
 
-        self.draft_model.setHorizontalHeaderLabels(['Drafted Players'])
-        parent = self.draft_model.invisibleRootItem()
         for team in self.team_list:
-            item = QtGui.QStandardItem(team)
-            parent.appendRow(item)
+            list = QtGui.QListWidget(self.drafted_view)
+            list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+            self.drafted_view.addItem(list, team)
 
         self.current_round = 1
         self.round_field.setText(str(self.current_round))
         self.current_draft_idx = 0
-        self.drafting_field.setText(self.draft_model.data(self.draft_model.index(self.current_draft_idx, 0)).toString())
-        self.next_field.setText(self.draft_model.data(self.draft_model.index(self.next_draft_idx(), 0)).toString())
+        self.drafting_field.setText(self.drafted_view.itemText(0))
+        self.next_field.setText(self.drafted_view.itemText(1))
 
     def next_draft_idx(self):
         if self.current_round % 2 != 0:
             # Odd numbered round, index goes up
-            if self.current_draft_idx != self.draft_model.rowCount() - 1:
+            if self.current_draft_idx != self.drafted_view.count() - 1:
                 return self.current_draft_idx + 1
             else:
                 return self.current_draft_idx
@@ -251,8 +254,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             bye = self.avail_model.data(self.avail_model.index(0,3)).toString()
             draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
 
-            item = QtGui.QStandardItem(draft_string)
-            self.draft_model.item(self.current_draft_idx).appendRow(item)
+            self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
 
             self.saved_rows[draft_string] = self.avail_model.takeRow(0)
             self.next_team()
@@ -264,8 +266,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString()
         draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
         
-        item = QtGui.QStandardItem(draft_string)
-        self.draft_model.item(self.current_draft_idx).appendRow(item)
+        self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
 
         avail_idx = self.filtered_model.mapToSource(filtered_idx)
         self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
@@ -282,8 +283,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         position = dlg.position_combo_box.currentText()
         draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: ?)"
 
-        item = QtGui.QStandardItem(draft_string)
-        self.draft_model.item(self.current_draft_idx).appendRow(item)
+        self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
         self.next_team()
 
     def next_team(self):
@@ -293,20 +293,22 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         self.current_draft_idx = next_idx
         self.round_field.setText(str(self.current_round))
-        self.drafting_field.setText(self.draft_model.data(self.draft_model.index(self.current_draft_idx, 0)).toString())
-        self.next_field.setText(self.draft_model.data(self.draft_model.index(self.next_draft_idx(), 0)).toString())
+        self.drafting_field.setText(self.drafted_view.itemText(self.current_draft_idx))
+        self.next_field.setText(self.drafted_view.itemText(self.next_draft_idx()))
 
         # Highlight the currently drafting player
-        for row in range(self.draft_model.rowCount()):
-            font = self.draft_model.item(row).font()
-            if row == self.current_draft_idx:
-                font.setBold(True)
-            else:
-                font.setBold(False)
-            self.draft_model.item(row).setFont(font)
+        # TODO: Can't set toolbox title fonts to bold?
+        # Maybe use football icon instead?
+        #for row in range(self.drafted_view.count()):
+        #    font = self.draft_model.item(row).font()
+        #    if row == self.current_draft_idx:
+        #        font.setBold(True)
+        #    else:
+        #        font.setBold(False)
+        #    self.draft_model.item(row).setFont(font)
 
         # Make sure the current team is visible in the treeview scroll area
-        self.drafted_view.scrollTo(self.draft_model.index(self.current_draft_idx, 0), QtGui.QAbstractItemView.PositionAtTop)
+        self.drafted_view.setCurrentIndex(self.current_draft_idx)
 
         # Reset the timer and start it
         self.timer.reset()
@@ -342,11 +344,11 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             f.write("autopick = " + str(self.autopick) + "\n")
 
             f.write("[Drafted]\n")
-            team_count = self.draft_model.rowCount()
+            team_count = self.drafted_view.count()
             for team_idx in range(team_count):
-                item = self.draft_model.item(team_idx)
-                team_name = str(item.text())
-                drafted_players = [ str(item.child(player_idx).text()) for player_idx in range(item.rowCount()) ]
+                team_name = str(self.drafted_view.itemText(team_idx))
+                list = self.drafted_view.widget(team_idx)
+                drafted_players = [ str(list.item(player_idx).text()) for player_idx in range(list.count()) ]
                 drafted_players.insert(0, team_name)
                 f.write(join(drafted_players, ",") + "\n")
 
@@ -356,8 +358,11 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         loadfile = QtGui.QFileDialog.getOpenFileName(None, "Open File", QtCore.QDir.homePath(), "FF Draft (*.ffd)")
         if loadfile == QtCore.QString():
             return
+        self.load_file(loadfile)
+
+    def load_file(self, file):
         sectionrx = re.compile(r'\[(\w+)\]')
-        f = open(loadfile, 'r')
+        f = open(file, 'r')
         section = None
         file_lines = {}
         for line in f:
@@ -369,11 +374,12 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 file_lines[section] = []
             else:
                 file_lines[section].append(line)
+        f.close()
 
         self.load_state(file_lines['State'])
         self.load_draft(file_lines['Drafted'])
         self.update_avail()
-        self.save_file = loadfile
+        self.save_file = file
 
     def load_state(self, lines):
         for line in lines:
@@ -395,27 +401,27 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 self.autopick = bool(value)
 
     def load_draft(self, lines):
-        self.draft_model.clear()
+        while self.drafted_view.count():
+            self.drafted_view.removeItem(0)
 
-        self.draft_model.setHorizontalHeaderLabels(['Drafted Players'])
-        parent = self.draft_model.invisibleRootItem()
         for line in lines:
             players = line.split(',')
             team = players.pop(0)
-            item = QtGui.QStandardItem(team)
-            parent.appendRow(item)
+            list = QtGui.QListWidget(self.drafted_view)
+            list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+            self.drafted_view.addItem(list, team)
             for player in players:
-                player_item = QtGui.QStandardItem(player)
-                item.appendRow(player_item)
+                list.addItem(player)
 
         # Highlight the currently drafting player
-        for row in range(self.draft_model.rowCount()):
-            font = self.draft_model.item(row).font()
-            if row == self.current_draft_idx:
-                font.setBold(True)
-            else:
-                font.setBold(False)
-            self.draft_model.item(row).setFont(font)
+        # TODO: See previous TODO
+        #for row in range(self.draft_model.rowCount()):
+        #    font = self.draft_model.item(row).font()
+        #    if row == self.current_draft_idx:
+        #        font.setBold(True)
+        #    else:
+        #        font.setBold(False)
+        #    self.draft_model.item(row).setFont(font)
 
     def load_avail(self, lines):
         self.avail_model.clear()
@@ -432,12 +438,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
     def update_avail(self):
         # Loop through the drafted model and remove all the drafted players from the available model
-        root_item = self.draft_model.invisibleRootItem()
-        teams = [ root_item.child(i) for i in range(root_item.rowCount()) ]
-        for team in teams:
-            players = [ team.child(i) for i in range(team.rowCount()) ]
-            for player in players:
-                draft_string = str(player.text())
+        team_list = [ self.drafted_view.widget(i) for i in range(self.drafted_view.count()) ]
+        for list in team_list:
+            players = [ str(list.item(i).text()) for i in range(list.count()) ]
+            for draft_string in players:
                 m = re.match(r'^\d+\) \w+: (.+)( \(Bye: [\?\d]+\))$', draft_string)
                 if m:
                     name = m.group(1)
@@ -454,14 +458,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         filtered_idx = filtered_indexes.pop(0)
 
         # Find the selected team
-        drafted_indexes = self.drafted_view.selectedIndexes()
-        if len(drafted_indexes) == 0:
+        drafted_idx = self.drafted_view.currentIndex()
+        if drafted_idx == -1:
             QtGui.QMessageBox.warning(self, "Error", "Please select a team to add the player to")
             return
-        drafted_idx = drafted_indexes.pop(0)
-        if drafted_idx.parent() != QtCore.QModelIndex():
-            # Child selected, select parent (team)
-            drafted_idx = drafted_idx.parent()
 
         # Add the selected player to the selected team
         filtered_row = filtered_idx.row()
@@ -470,46 +470,49 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString() 
         draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
         
-        item = QtGui.QStandardItem(draft_string)
-        self.draft_model.itemFromIndex(drafted_idx).appendRow(item)
+        self.drafted_view.widget(drafted_idx).addItem(draft_string)
 
         avail_idx = self.filtered_model.mapToSource(filtered_idx)
         self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
 
     def remove_player(self):
         # Find the selected team's player
-        drafted_indexes = self.drafted_view.selectedIndexes()
-        if len(drafted_indexes) == 0:
+        team_idx = self.drafted_view.currentIndex()
+        if team_idx == -1:
             QtGui.QMessageBox.warning(self, "Error", "Please select a player to remove")
             return
-        drafted_idx = drafted_indexes.pop(0)
-        if drafted_idx.parent() == QtCore.QModelIndex():
-            QtGui.QMessageBox.warning(self, "Error", "Please select a player to remove")
-            return
-        team_idx = drafted_idx.parent()
-        draft_string = str(self.draft_model.data(drafted_idx).toString())
-        # Remove the player from the team
-        self.draft_model.removeRows(drafted_idx.row(), 1, team_idx)
-        # Restore the player to the available model
-        if self.saved_rows.has_key(draft_string):
-            self.avail_model.insertRow(0, self.saved_rows[draft_string])
-            del self.saved_rows[draft_string]
+
+        list = self.drafted_view.currentWidget()
+        selected_players = list.selectedItems()
+        for player in selected_players:
+            # Remove the player from the team
+            draft_string = str(player.text())
+            # list.removeItemWidget(player) doesn't seem to work, have to do it
+            # the long way?
+            for i in reversed(range(list.count())):
+                if list.item(i).text() == player.text():
+                    list.takeItem(i)
+
+            if self.saved_rows.has_key(draft_string):
+                # Restore the player to the available model
+                self.avail_model.insertRow(0, self.saved_rows[draft_string])
+                del self.saved_rows[draft_string]
 
     def export(self):
         export_file = QtGui.QFileDialog.getSaveFileName(None, "Export File", QtCore.QDir.homePath(), "Text File (*.txt)")
         if export_file == "":
             return
         f = open(export_file, 'w')
-        # Loop through the draft model and write all the drafted players
-        root_item = self.draft_model.invisibleRootItem()
-        teams = [ root_item.child(i) for i in range(root_item.rowCount()) ]
-        for team in teams:
-            f.write(team.text() + "\n")
-            f.write("-" * len(str(team.text())))
+        # Loop through the draft view and write all the drafted players
+        for i in range(self.drafted_view.count()):
+            team = self.drafted_view.itemText(i)
+            list = self.drafted_view.widget(i)
+            f.write(str(team) + "\n")
+            f.write("-" * len(str(team)))
             f.write("\n")
-            players = [ team.child(i) for i in range(team.rowCount()) ]
+            players = [ list.item(i).text() for i in range(list.count()) ]
             for player in players:
-                f.write(player.text() + "\n")
+                f.write(str(player) + "\n")
             f.write("\n\n")
         f.close()
 
@@ -670,6 +673,8 @@ if __name__ == "__main__":
         f.close()
     mainWin = MainWindow()
     mainWin.resize(800,600)
+    if len(sys.argv) > 1:
+        mainWin.load_file(sys.argv[1])
     mainWin.show()
     sys.exit(app.exec_())
 

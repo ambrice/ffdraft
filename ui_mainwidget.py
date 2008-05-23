@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui_mainwidget.ui'
 #
-# Created: Fri May  2 18:20:23 2008
+# Created: Thu May 22 15:18:11 2008
 #      by: PyQt4 UI code generator 4.3.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -21,10 +21,10 @@ class Ui_MainWidget(object):
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
         self.splitter.setObjectName("splitter")
 
-        self.widget = QtGui.QWidget(self.splitter)
-        self.widget.setObjectName("widget")
+        self.layoutWidget = QtGui.QWidget(self.splitter)
+        self.layoutWidget.setObjectName("layoutWidget")
 
-        self.vboxlayout1 = QtGui.QVBoxLayout(self.widget)
+        self.vboxlayout1 = QtGui.QVBoxLayout(self.layoutWidget)
         self.vboxlayout1.setObjectName("vboxlayout1")
 
         self.hboxlayout = QtGui.QHBoxLayout()
@@ -33,7 +33,7 @@ class Ui_MainWidget(object):
         self.gridlayout = QtGui.QGridLayout()
         self.gridlayout.setObjectName("gridlayout")
 
-        self.label = QtGui.QLabel(self.widget)
+        self.label = QtGui.QLabel(self.layoutWidget)
 
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -46,7 +46,7 @@ class Ui_MainWidget(object):
         self.label.setObjectName("label")
         self.gridlayout.addWidget(self.label,0,0,1,1)
 
-        self.round_field = QtGui.QLineEdit(self.widget)
+        self.round_field = QtGui.QLineEdit(self.layoutWidget)
 
         font = QtGui.QFont()
         font.setFamily("Sans Serif")
@@ -58,7 +58,7 @@ class Ui_MainWidget(object):
         self.round_field.setObjectName("round_field")
         self.gridlayout.addWidget(self.round_field,0,1,1,1)
 
-        self.label_2 = QtGui.QLabel(self.widget)
+        self.label_2 = QtGui.QLabel(self.layoutWidget)
 
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -70,7 +70,7 @@ class Ui_MainWidget(object):
         self.label_2.setObjectName("label_2")
         self.gridlayout.addWidget(self.label_2,1,0,1,1)
 
-        self.drafting_field = QtGui.QLineEdit(self.widget)
+        self.drafting_field = QtGui.QLineEdit(self.layoutWidget)
 
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -80,7 +80,7 @@ class Ui_MainWidget(object):
         self.drafting_field.setObjectName("drafting_field")
         self.gridlayout.addWidget(self.drafting_field,1,1,1,1)
 
-        self.label_3 = QtGui.QLabel(self.widget)
+        self.label_3 = QtGui.QLabel(self.layoutWidget)
 
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -92,7 +92,7 @@ class Ui_MainWidget(object):
         self.label_3.setObjectName("label_3")
         self.gridlayout.addWidget(self.label_3,2,0,1,1)
 
-        self.next_field = QtGui.QLineEdit(self.widget)
+        self.next_field = QtGui.QLineEdit(self.layoutWidget)
 
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -106,7 +106,7 @@ class Ui_MainWidget(object):
         self.vboxlayout2 = QtGui.QVBoxLayout()
         self.vboxlayout2.setObjectName("vboxlayout2")
 
-        self.timerDisplay = QtGui.QLCDNumber(self.widget)
+        self.timerDisplay = QtGui.QLCDNumber(self.layoutWidget)
 
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
@@ -122,18 +122,18 @@ class Ui_MainWidget(object):
         self.hboxlayout1 = QtGui.QHBoxLayout()
         self.hboxlayout1.setObjectName("hboxlayout1")
 
-        self.reset_button = QtGui.QPushButton(self.widget)
+        self.reset_button = QtGui.QPushButton(self.layoutWidget)
         self.reset_button.setObjectName("reset_button")
         self.hboxlayout1.addWidget(self.reset_button)
 
-        self.pause_button = QtGui.QPushButton(self.widget)
+        self.pause_button = QtGui.QPushButton(self.layoutWidget)
         self.pause_button.setObjectName("pause_button")
         self.hboxlayout1.addWidget(self.pause_button)
         self.vboxlayout2.addLayout(self.hboxlayout1)
         self.hboxlayout.addLayout(self.vboxlayout2)
         self.vboxlayout1.addLayout(self.hboxlayout)
 
-        self.avail_view = QtGui.QTableView(self.widget)
+        self.avail_view = QtGui.QTableView(self.layoutWidget)
 
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
@@ -148,18 +148,12 @@ class Ui_MainWidget(object):
         self.avail_view.setObjectName("avail_view")
         self.vboxlayout1.addWidget(self.avail_view)
 
-        self.drafted_view = QtGui.QTreeView(self.splitter)
-
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred,QtGui.QSizePolicy.Expanding)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.drafted_view.sizePolicy().hasHeightForWidth())
-        self.drafted_view.setSizePolicy(sizePolicy)
-        self.drafted_view.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+        self.drafted_view = QtGui.QToolBox(self.splitter)
         self.drafted_view.setObjectName("drafted_view")
         self.vboxlayout.addWidget(self.splitter)
 
         self.retranslateUi(MainWidget)
+        self.drafted_view.setCurrentIndex(-1)
         QtCore.QMetaObject.connectSlotsByName(MainWidget)
 
     def retranslateUi(self, MainWidget):

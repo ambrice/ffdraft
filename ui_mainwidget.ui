@@ -18,7 +18,7 @@
      <property name="orientation" >
       <enum>Qt::Horizontal</enum>
      </property>
-     <widget class="QWidget" name="" >
+     <widget class="QWidget" name="layoutWidget" >
       <layout class="QVBoxLayout" >
        <item>
         <layout class="QHBoxLayout" >
@@ -218,15 +218,9 @@
        </item>
       </layout>
      </widget>
-     <widget class="QTreeView" name="drafted_view" >
-      <property name="sizePolicy" >
-       <sizepolicy vsizetype="Expanding" hsizetype="Preferred" >
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="editTriggers" >
-       <set>QAbstractItemView::NoEditTriggers</set>
+     <widget class="QToolBox" name="drafted_view" >
+      <property name="currentIndex" >
+       <number>-1</number>
       </property>
      </widget>
     </widget>
