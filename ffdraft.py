@@ -29,13 +29,13 @@ class MainWindow(QtGui.QMainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
 
+        self.mainWidget = MainWidget()
+        self.setCentralWidget(self.mainWidget)
         self.createActions()
         self.createMenus()
         self.createStatusBar()
-        self.mainWidget = MainWidget()
-        self.setCentralWidget(self.mainWidget)
         self.setWindowTitle("Fantasy Football Draft")
-        self.version = 1.0
+        self.version = 1.1
 
     def createActions(self):
         self.loadAct = QtGui.QAction("&Load", self)
@@ -71,6 +71,11 @@ class MainWindow(QtGui.QMainWindow):
         self.extraAct.setShortcut("Ctrl+A")
         self.extraAct.setStatusTip("Add an extra player to a team, outside of the draft")
         self.connect(self.extraAct, QtCore.SIGNAL("triggered()"), self.extra_player)
+
+        self.keeperAct = QtGui.QAction("&Add Keeper", self)
+        self.keeperAct.setShortcut("Ctrl+K")
+        self.keeperAct.setStatusTip("Add a player as a keeper from a keeper league")
+        self.connect(self.keeperAct, QtCore.SIGNAL("triggered()"), self.add_keeper)
         
         self.removeAct = QtGui.QAction("&Remove Player", self)
         self.removeAct.setShortcut("Ctrl+R")
@@ -102,6 +107,7 @@ class MainWindow(QtGui.QMainWindow):
         self.editMenu = self.menuBar().addMenu("&Edit")
         self.editMenu.addAction(self.teamAct)
         self.editMenu.addAction(self.extraAct)
+        self.editMenu.addAction(self.keeperAct)
         self.editMenu.addAction(self.removeAct)
         self.editMenu.addSeparator()
         self.editMenu.addAction(self.draftAct)
@@ -110,8 +116,28 @@ class MainWindow(QtGui.QMainWindow):
         self.helpMenu.addAction(self.aboutAct)
         self.helpMenu.addAction(self.aboutQtAct)
 
+        self.playerPopupMenu = QtGui.QMenu(self)
+        self.playerPopupMenu.addAction(self.extraAct)
+        self.playerPopupMenu.addAction(self.keeperAct)
+        self.connect(self.mainWidget.avail_view, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), 
+                self.showPlayerMenu)
+
+        self.draftedPopupMenu = QtGui.QMenu(self)
+        self.draftedPopupMenu.addAction(self.removeAct)
+        self.draftedPopupMenu.addAction(self.draftAct)
+        self.connect(self.mainWidget.drafted_view, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), 
+                self.showDraftedMenu)
+
     def createStatusBar(self):
         self.statusBar().showMessage("Ready")
+
+    def showPlayerMenu(self, point):
+        self.playerPopupMenu.exec_(QtGui.QCursor.pos())
+        #self.playerPopupMenu.popup(self.mainWidget.avail_view.mapToGlobal(point))
+
+    def showDraftedMenu(self, point):
+        self.draftedPopupMenu.exec_(QtGui.QCursor.pos())
+        #self.draftedPopupMenu.popup(self.mainWidget.drafted_view.mapToGlobal(point))
 
     def edit_teams(self):
         self.mainWidget.edit_teams()
@@ -134,6 +160,9 @@ class MainWindow(QtGui.QMainWindow):
     def extra_player(self):
         self.mainWidget.extra_player()
 
+    def add_keeper(self):
+        self.mainWidget.extra_player(keeper=True)
+
     def remove_player(self):
         self.mainWidget.remove_player()
 
@@ -143,7 +172,7 @@ class MainWindow(QtGui.QMainWindow):
     def about(self):
         QtGui.QMessageBox.about(self, "About Fantasy Football Draft",
                 "Fantasy Football Draft version " + str(self.version) + "\n\n"
-                +"Copyright (C) 2007 Aaron Brice (aaron.brice@gmail.com) \n\n"
+                +"Copyright (C) 2007-2008 Aaron Brice (aaron.brice@gmail.com) \n\n"
                 +"This program is Free Software, licensed under the GPLv2\n"
                 +"See the file COPYING for details\n")
 
@@ -153,6 +182,9 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         QtGui.QWidget.__init__(self, parent)
 
         self.setupUi(self)
+
+        self.drafted_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.avail_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
         self.timer = EggTimer(self)
         self.autopick = False
@@ -186,6 +218,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.current_draft_idx = 0
         self.team_list = []
         self.saved_rows = {}
+
+        self.draft_tmpl = "%02d) %s: %s (Bye: %s)"
 
         self.save_file = ""
         self.open_file("playerdata.csv")
@@ -252,7 +286,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             name = self.avail_model.data(self.avail_model.index(0,0)).toString()
             position = self.avail_model.data(self.avail_model.index(0,2)).toString()
             bye = self.avail_model.data(self.avail_model.index(0,3)).toString()
-            draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
+            draft_string = self.draft_tmpl % (int(self.current_round), position, name, bye)
+            #draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
 
             self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
 
@@ -264,7 +299,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         name = self.filtered_model.data(self.filtered_model.index(filtered_row, 0)).toString()
         position = self.filtered_model.data(self.filtered_model.index(filtered_row, 2)).toString()
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString()
-        draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
+        draft_string = self.draft_tmpl % (int(self.current_round), position, name, bye)
+        #draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
         
         self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
 
@@ -281,7 +317,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         if name == QtCore.QString():
             return
         position = dlg.position_combo_box.currentText()
-        draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: ?)"
+        draft_string = self.draft_tmpl % (int(self.current_round), position, name, "?")
+        #draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: ?)"
 
         self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
         self.next_team()
@@ -296,23 +333,24 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.drafting_field.setText(self.drafted_view.itemText(self.current_draft_idx))
         self.next_field.setText(self.drafted_view.itemText(self.next_draft_idx()))
 
-        # Highlight the currently drafting player
-        # TODO: Can't set toolbox title fonts to bold?
-        # Maybe use football icon instead?
-        #for row in range(self.drafted_view.count()):
-        #    font = self.draft_model.item(row).font()
-        #    if row == self.current_draft_idx:
-        #        font.setBold(True)
-        #    else:
-        #        font.setBold(False)
-        #    self.draft_model.item(row).setFont(font)
-
-        # Make sure the current team is visible in the treeview scroll area
+        # Make sure the current team is visible in the toolbox
         self.drafted_view.setCurrentIndex(self.current_draft_idx)
 
         # Reset the timer and start it
         self.timer.reset()
         self.timer.start()
+
+        # See if the current team has already drafted someone this round
+        round = "%02d)" % int(self.current_round)
+        itemlist = self.drafted_view.widget(self.current_draft_idx).findItems(round, QtCore.Qt.MatchStartsWith)
+        if len(itemlist) > 0:
+            tmp_string = str(itemlist[0].text())
+            m = re.match(r'^\d+\) \w+: (.+)( \(Bye: [\?\d]+\))$', tmp_string)
+            if m:
+                name = m.group(1)
+            msg = "%s automatically selects %s" % (self.drafting_field.text(), name)
+            QtGui.QMessageBox.information(self, "Automatic pick", msg)
+            self.next_team()
 
     def filter_avail(self, tab_idx):
         position = self.tab_bar.tabText(tab_idx)
@@ -449,7 +487,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                     for item in item_list:
                         self.saved_rows[draft_string] = self.avail_model.takeRow(item.row())
 
-    def extra_player(self):
+    def extra_player(self, keeper=False):
         # Find the selected player
         filtered_indexes = self.avail_view.selectedIndexes()
         if len(filtered_indexes) == 0:
@@ -463,12 +501,29 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             QtGui.QMessageBox.warning(self, "Error", "Please select a team to add the player to")
             return
 
-        # Add the selected player to the selected team
         filtered_row = filtered_idx.row()
+
+        # Determine which round the player is drafted in
+        if keeper:
+            # For keepers, take the ranking of the player divided by 
+            # the number of teams, +1.  So if ranking = 95 and there's 10
+            # teams, the player should be a 10th round pick
+            (ranking, valid) = self.filtered_model.data(self.filtered_model.index(filtered_row, 4)).toInt()
+            if valid:
+                round = int(ranking) / int(self.drafted_view.count())
+                if (int(ranking) % int(self.drafted_view.count())):
+                    round = round + 1
+            else:
+                round = int(self.current_round)
+        else:
+            round = int(self.current_round)
+
+        # Add the selected player to the selected team
         name = self.filtered_model.data(self.filtered_model.index(filtered_row, 0)).toString()
         position = self.filtered_model.data(self.filtered_model.index(filtered_row, 2)).toString()
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString() 
-        draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
+        draft_string = self.draft_tmpl % (round, position, name, bye)
+        #draft_string = str(round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
         
         self.drafted_view.widget(drafted_idx).addItem(draft_string)
 
