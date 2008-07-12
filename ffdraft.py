@@ -133,11 +133,9 @@ class MainWindow(QtGui.QMainWindow):
 
     def showPlayerMenu(self, point):
         self.playerPopupMenu.exec_(QtGui.QCursor.pos())
-        #self.playerPopupMenu.popup(self.mainWidget.avail_view.mapToGlobal(point))
 
     def showDraftedMenu(self, point):
         self.draftedPopupMenu.exec_(QtGui.QCursor.pos())
-        #self.draftedPopupMenu.popup(self.mainWidget.drafted_view.mapToGlobal(point))
 
     def edit_teams(self):
         self.mainWidget.edit_teams()
@@ -185,7 +183,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         self.drafted_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.avail_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-
+        
         self.timer = EggTimer(self)
         self.autopick = False
         self.connect(self.timer, QtCore.SIGNAL("update(QString)"), self.timerDisplay, QtCore.SLOT("display(QString)"))
@@ -259,13 +257,14 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         for team in self.team_list:
             list = QtGui.QListWidget(self.drafted_view)
             list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+            list.setSortingEnabled(True)
             self.drafted_view.addItem(list, team)
 
         self.current_round = 1
         self.round_field.setText(str(self.current_round))
         self.current_draft_idx = 0
-        self.drafting_field.setText(self.drafted_view.itemText(0))
-        self.next_field.setText(self.drafted_view.itemText(1))
+        self.drafting_field.setText(self.get_team(0))
+        self.next_field.setText(self.get_team(1))
 
     def next_draft_idx(self):
         if self.current_round % 2 != 0:
@@ -287,9 +286,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             position = self.avail_model.data(self.avail_model.index(0,2)).toString()
             bye = self.avail_model.data(self.avail_model.index(0,3)).toString()
             draft_string = self.draft_tmpl % (int(self.current_round), position, name, bye)
-            #draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
 
             self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
+            header_text = "%s -- %s" % (self.get_team(), name)
+            self.drafted_view.setItemText(self.current_draft_idx, header_text)
 
             self.saved_rows[draft_string] = self.avail_model.takeRow(0)
             self.next_team()
@@ -300,9 +300,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         position = self.filtered_model.data(self.filtered_model.index(filtered_row, 2)).toString()
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString()
         draft_string = self.draft_tmpl % (int(self.current_round), position, name, bye)
-        #draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
         
         self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
+        header_text = "%s -- %s" % (self.get_team(), name)
+        self.drafted_view.setItemText(self.current_draft_idx, header_text)
 
         avail_idx = self.filtered_model.mapToSource(filtered_idx)
         self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
@@ -318,9 +319,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             return
         position = dlg.position_combo_box.currentText()
         draft_string = self.draft_tmpl % (int(self.current_round), position, name, "?")
-        #draft_string = str(self.current_round) + ") " + str(position) + ": " + str(name) + " (Bye: ?)"
 
         self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
+        header_text = "%s -- %s" % (self.get_team(), name)
+        self.drafted_view.setItemText(self.current_draft_idx, header_text)
         self.next_team()
 
     def next_team(self):
@@ -330,8 +332,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         self.current_draft_idx = next_idx
         self.round_field.setText(str(self.current_round))
-        self.drafting_field.setText(self.drafted_view.itemText(self.current_draft_idx))
-        self.next_field.setText(self.drafted_view.itemText(self.next_draft_idx()))
+        self.drafting_field.setText(self.get_team())
+        self.next_field.setText(self.get_team(self.next_draft_idx()))
 
         # Make sure the current team is visible in the toolbox
         self.drafted_view.setCurrentIndex(self.current_draft_idx)
@@ -349,8 +351,22 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             if m:
                 name = m.group(1)
             msg = "%s automatically selects %s" % (self.drafting_field.text(), name)
+            self.timer.pause()
             QtGui.QMessageBox.information(self, "Automatic pick", msg)
+            self.timer.start()
+            header_text = "%s -- %s" % (self.get_team(), name)
+            self.drafted_view.setItemText(self.current_draft_idx, header_text)
             self.next_team()
+
+    def get_team(self, idx=None):
+        if idx == None:
+            idx = self.current_draft_idx
+        item_str = str(self.drafted_view.itemText(idx))
+        m = re.match(r'(.+) -- (.+)', item_str)
+        if m:
+            return m.group(1)
+        else:
+            return item_str
 
     def filter_avail(self, tab_idx):
         position = self.tab_bar.tabText(tab_idx)
@@ -384,7 +400,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             f.write("[Drafted]\n")
             team_count = self.drafted_view.count()
             for team_idx in range(team_count):
-                team_name = str(self.drafted_view.itemText(team_idx))
+                team_name = str(self.get_team(team_idx))
                 list = self.drafted_view.widget(team_idx)
                 drafted_players = [ str(list.item(player_idx).text()) for player_idx in range(list.count()) ]
                 drafted_players.insert(0, team_name)
@@ -447,19 +463,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             team = players.pop(0)
             list = QtGui.QListWidget(self.drafted_view)
             list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+            list.setSortingEnabled(True)
             self.drafted_view.addItem(list, team)
             for player in players:
                 list.addItem(player)
-
-        # Highlight the currently drafting player
-        # TODO: See previous TODO
-        #for row in range(self.draft_model.rowCount()):
-        #    font = self.draft_model.item(row).font()
-        #    if row == self.current_draft_idx:
-        #        font.setBold(True)
-        #    else:
-        #        font.setBold(False)
-        #    self.draft_model.item(row).setFont(font)
 
     def load_avail(self, lines):
         self.avail_model.clear()
@@ -523,7 +530,6 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         position = self.filtered_model.data(self.filtered_model.index(filtered_row, 2)).toString()
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString() 
         draft_string = self.draft_tmpl % (round, position, name, bye)
-        #draft_string = str(round) + ") " + str(position) + ": " + str(name) + " (Bye: " + str(bye) + ")"
         
         self.drafted_view.widget(drafted_idx).addItem(draft_string)
 
@@ -560,7 +566,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         f = open(export_file, 'w')
         # Loop through the draft view and write all the drafted players
         for i in range(self.drafted_view.count()):
-            team = self.drafted_view.itemText(i)
+            team = self.get_team(i)
             list = self.drafted_view.widget(i)
             f.write(str(team) + "\n")
             f.write("-" * len(str(team)))
