@@ -67,16 +67,16 @@ class MainWindow(QtGui.QMainWindow):
         self.teamAct.setStatusTip("Add/Remove teams from the draft")
         self.connect(self.teamAct, QtCore.SIGNAL("triggered()"), self.edit_teams)
 
-        self.extraAct = QtGui.QAction("&Add Extra Player", self)
-        self.extraAct.setShortcut("Ctrl+A")
-        self.extraAct.setStatusTip("Add an extra player to a team, outside of the draft")
-        self.connect(self.extraAct, QtCore.SIGNAL("triggered()"), self.extra_player)
-
         self.keeperAct = QtGui.QAction("&Add Keeper", self)
         self.keeperAct.setShortcut("Ctrl+K")
         self.keeperAct.setStatusTip("Add a player as a keeper from a keeper league")
         self.connect(self.keeperAct, QtCore.SIGNAL("triggered()"), self.add_keeper)
         
+        self.extraAct = QtGui.QAction("&Add Extra Player", self)
+        self.extraAct.setShortcut("Ctrl+A")
+        self.extraAct.setStatusTip("Add an extra player to a team, outside of the draft")
+        self.connect(self.extraAct, QtCore.SIGNAL("triggered()"), self.extra_player)
+
         self.removeAct = QtGui.QAction("&Remove Player", self)
         self.removeAct.setShortcut("Ctrl+R")
         self.removeAct.setStatusTip("Remove a player from a team")
@@ -183,6 +183,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         self.drafted_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.avail_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.avail_view.verticalHeader().hide()
         
         self.timer = EggTimer(self)
         self.autopick = False
@@ -191,7 +192,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.connect(self.pause_button, QtCore.SIGNAL("clicked()"), self.pause_timer)
         self.connect(self.timer, QtCore.SIGNAL("expired()"), self.draft_best_player)
 
-        self.splitter.setSizes([450, 150])
+        self.splitter.setSizes([1000, 200])
 
         # Designer doesn't have QTabBar, only QTabWidget, so I have to insert it manually
         self.tab_bar = QtGui.QTabBar(self)
@@ -202,7 +203,11 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.tab_bar.addTab("TE")
         self.tab_bar.addTab("K")
         self.tab_bar.addTab("DEF")
-        self.vboxlayout1.insertWidget(1, self.tab_bar)
+        self.vboxlayout2.insertWidget(0, self.tab_bar)
+
+        #self.info_tab_bar = QtGui.QTabBar(self)
+        #self.info_tab_bar.addTab("Prev 10 Picks")
+        #self.vboxlayout.insertWidget(0, self.info_tab_bar)
 
         self.avail_model = QtGui.QStandardItemModel()
         self.filtered_model = CustomSortFilterProxyModel()
@@ -265,6 +270,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.current_draft_idx = 0
         self.drafting_field.setText(self.get_team(0))
         self.next_field.setText(self.get_team(1))
+        self.previous_picks_list.clear()
 
     def next_draft_idx(self):
         if self.current_round % 2 != 0:
@@ -287,9 +293,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             bye = self.avail_model.data(self.avail_model.index(0,3)).toString()
             draft_string = self.draft_tmpl % (int(self.current_round), position, name, bye)
 
-            self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
-            header_text = "%s -- %s" % (self.get_team(), name)
-            self.drafted_view.setItemText(self.current_draft_idx, header_text)
+            self.drafted_view.widget(self.current_draft_idx).addItem(DraftListItem(draft_string))
+            self.update_pick_list(name)
 
             self.saved_rows[draft_string] = self.avail_model.takeRow(0)
             self.next_team()
@@ -301,9 +306,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString()
         draft_string = self.draft_tmpl % (int(self.current_round), position, name, bye)
         
-        self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
-        header_text = "%s -- %s" % (self.get_team(), name)
-        self.drafted_view.setItemText(self.current_draft_idx, header_text)
+        self.drafted_view.widget(self.current_draft_idx).addItem(DraftListItem(draft_string))
+        self.update_pick_list(name)
 
         avail_idx = self.filtered_model.mapToSource(filtered_idx)
         self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
@@ -320,9 +324,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         position = dlg.position_combo_box.currentText()
         draft_string = self.draft_tmpl % (int(self.current_round), position, name, "?")
 
-        self.drafted_view.widget(self.current_draft_idx).addItem(draft_string)
-        header_text = "%s -- %s" % (self.get_team(), name)
-        self.drafted_view.setItemText(self.current_draft_idx, header_text)
+        self.drafted_view.widget(self.current_draft_idx).addItem(DraftListItem(draft_string))
+        self.update_pick_list(name)
         self.next_team()
 
     def next_team(self):
@@ -354,8 +357,6 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             self.timer.pause()
             QtGui.QMessageBox.information(self, "Automatic pick", msg)
             self.timer.start()
-            header_text = "%s -- %s" % (self.get_team(), name)
-            self.drafted_view.setItemText(self.current_draft_idx, header_text)
             self.next_team()
 
     def get_team(self, idx=None):
@@ -367,6 +368,12 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             return m.group(1)
         else:
             return item_str
+
+    def update_pick_list(self, name):
+        prev = "%s -- %s" % (name, self.get_team())
+        self.previous_picks_list.insertItem(0, DraftListItem(prev))
+        while (self.previous_picks_list.count() > 10):
+            self.previous_picks_list.takeItem(10)
 
     def filter_avail(self, tab_idx):
         position = self.tab_bar.tabText(tab_idx)
@@ -466,7 +473,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             list.setSortingEnabled(True)
             self.drafted_view.addItem(list, team)
             for player in players:
-                list.addItem(player)
+                list.addItem(DraftListItem(player))
 
     def load_avail(self, lines):
         self.avail_model.clear()
@@ -531,7 +538,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString() 
         draft_string = self.draft_tmpl % (round, position, name, bye)
         
-        self.drafted_view.widget(drafted_idx).addItem(draft_string)
+        self.drafted_view.widget(drafted_idx).addItem(DraftListItem(draft_string))
 
         avail_idx = self.filtered_model.mapToSource(filtered_idx)
         self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
@@ -577,6 +584,12 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             f.write("\n\n")
         f.close()
 
+class DraftListItem(QtGui.QListWidgetItem):
+    def __init__(self, text, parent = None):
+        QtGui.QListWidgetItem.__init__(self, text, parent)
+        font = self.font()
+        font.setPointSize(15)
+        self.setFont(font)
 
 class CustomSortFilterProxyModel(QtGui.QSortFilterProxyModel):
     def __init__(self, parent = None):
@@ -733,7 +746,7 @@ if __name__ == "__main__":
     finally:
         f.close()
     mainWin = MainWindow()
-    mainWin.resize(800,600)
+    mainWin.resize(1200,1000)
     if len(sys.argv) > 1:
         mainWin.load_file(sys.argv[1])
     mainWin.show()

@@ -13,14 +13,14 @@ bye_weeks = { 'Det' => '4', 'Ind' => '4', 'Mia' => '4', 'NE' => '4', 'NYG' => '4
 
 outfile = File.new("playerdata.csv", "w")
 
-headers = ['Player','Team','Position','Bye','Projected','2006 Actual','Fan Pts','Passing Yds','Passing TD','Int','Sack','Rushing Yds','Rushing TD','Receiving Yds','Receiving TD','Ret TD','Misc 2pt','Fum Lost']
+headers = ['Player','Team','Position','Bye','Projected','2007 Actual','Fan Pts','Passing Yds','Passing TD','Int','Sack','Rushing Yds','Rushing TD','Receiving Yds','Receiving TD','Ret TD','Misc 2pt','Fum Lost']
 
 outfile.puts headers.join(',')
 
 header_map = Hash.new
-header_map['O'] = [nil, nil, nil, nil, nil, 'Projected','2006 Actual', nil, 'Passing Yds','Passing TD','Int','Sack','Rushing Yds','Rushing TD','Receiving Yds','Receiving TD','Ret TD','Misc 2pt','Fum Lost','Fan Pts']
-header_map['K'] = [nil, nil, nil, nil, nil, 'Projected','2006 Actual', nil, nil, nil, nil, nil, nil, nil, 'Fan Pts']
-header_map['DEF'] = [nil, nil, nil, nil, nil, 'Projected','2006 Actual', nil, nil, nil, nil, nil, nil, nil, nil, nil, 'Fan Pts']
+header_map['O'] = [nil, nil, nil, nil, nil, 'Projected','2007 Actual', nil, 'Passing Yds','Passing TD','Int','Sack','Rushing Yds','Rushing TD','Receiving Yds','Receiving TD','Ret TD','Misc 2pt','Fum Lost','Fan Pts']
+header_map['K'] = [nil, nil, nil, nil, nil, 'Projected','2007 Actual', nil, nil, nil, nil, nil, nil, nil, 'Fan Pts']
+header_map['DEF'] = [nil, nil, nil, nil, nil, 'Projected','2007 Actual', nil, nil, nil, nil, nil, nil, nil, nil, nil, 'Fan Pts']
 
 max = { 'O' => 300, 'K' => 50, 'DEF'=> 50 }
 players = Array.new
