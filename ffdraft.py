@@ -293,8 +293,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             bye = self.avail_model.data(self.avail_model.index(0,3)).toString()
             draft_string = self.draft_tmpl % (int(self.current_round), position, name, bye)
 
-            self.drafted_view.widget(self.current_draft_idx).addItem(DraftListItem(draft_string))
-            self.update_pick_list(name)
+            self.drafted_view.widget(self.current_draft_idx).addItem(QtGui.QListWidgetItem(draft_string))
+            self.update_pick_list(name, position)
 
             self.saved_rows[draft_string] = self.avail_model.takeRow(0)
             self.next_team()
@@ -306,8 +306,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString()
         draft_string = self.draft_tmpl % (int(self.current_round), position, name, bye)
         
-        self.drafted_view.widget(self.current_draft_idx).addItem(DraftListItem(draft_string))
-        self.update_pick_list(name)
+        self.drafted_view.widget(self.current_draft_idx).addItem(QtGui.QListWidgetItem(draft_string))
+        self.update_pick_list(name, position)
 
         avail_idx = self.filtered_model.mapToSource(filtered_idx)
         self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
@@ -324,8 +324,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         position = dlg.position_combo_box.currentText()
         draft_string = self.draft_tmpl % (int(self.current_round), position, name, "?")
 
-        self.drafted_view.widget(self.current_draft_idx).addItem(DraftListItem(draft_string))
-        self.update_pick_list(name)
+        self.drafted_view.widget(self.current_draft_idx).addItem(QtGui.QListWidgetItem(draft_string))
+        self.update_pick_list(name, position)
         self.next_team()
 
     def next_team(self):
@@ -344,6 +344,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         # Reset the timer and start it
         self.timer.reset()
         self.timer.start()
+        if self.pause_button.text() == "Start":
+            self.pause_button.setText("Pause")
 
         # See if the current team has already drafted someone this round
         round = "%02d)" % int(self.current_round)
@@ -369,9 +371,9 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         else:
             return item_str
 
-    def update_pick_list(self, name):
-        prev = "%s -- %s" % (name, self.get_team())
-        self.previous_picks_list.insertItem(0, DraftListItem(prev))
+    def update_pick_list(self, name, position):
+        prev = "%s (%s) -- %s" % (name, position, self.get_team())
+        self.previous_picks_list.insertItem(0, QtGui.QListWidgetItem(prev))
         while (self.previous_picks_list.count() > 10):
             self.previous_picks_list.takeItem(10)
 
@@ -473,7 +475,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             list.setSortingEnabled(True)
             self.drafted_view.addItem(list, team)
             for player in players:
-                list.addItem(DraftListItem(player))
+                list.addItem(QtGui.QListWidgetItem(player))
 
     def load_avail(self, lines):
         self.avail_model.clear()
@@ -538,7 +540,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         bye = self.filtered_model.data(self.filtered_model.index(filtered_row, 3)).toString() 
         draft_string = self.draft_tmpl % (round, position, name, bye)
         
-        self.drafted_view.widget(drafted_idx).addItem(DraftListItem(draft_string))
+        self.drafted_view.widget(drafted_idx).addItem(QtGui.QListWidgetItem(draft_string))
 
         avail_idx = self.filtered_model.mapToSource(filtered_idx)
         self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
@@ -583,13 +585,6 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 f.write(str(player) + "\n")
             f.write("\n\n")
         f.close()
-
-class DraftListItem(QtGui.QListWidgetItem):
-    def __init__(self, text, parent = None):
-        QtGui.QListWidgetItem.__init__(self, text, parent)
-        font = self.font()
-        font.setPointSize(15)
-        self.setFont(font)
 
 class CustomSortFilterProxyModel(QtGui.QSortFilterProxyModel):
     def __init__(self, parent = None):
