@@ -1,0 +1,9 @@
+Fantasy Football Draft program, for handling an offline fantasy football draft.
+
+Requires Python and the PyQt4 module.
+
+Python can be downloaded here: http://python.org/download/
+
+PyQt4 is here: http://www.riverbankcomputing.co.uk/software/pyqt/download
+
+If running on windows, rename “ffdraft.py” to “ffdraft.pyw” to get rid of the dos window when you run it.
