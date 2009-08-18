@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (C) 2007 Aaron Brice
+# Copyright (C) 2007-2009 Aaron Brice
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -53,7 +53,6 @@ class MainWindow(QtGui.QMainWindow):
         self.connect(self.saveAct, QtCore.SIGNAL("triggered()"), self.save)
 
         self.exportAct = QtGui.QAction("&Export", self)
-        self.exportAct.setShortcut("Ctrl+E")
         self.exportAct.setStatusTip("Export draft results to a text file")
         self.connect(self.exportAct, QtCore.SIGNAL("triggered()"), self.export)
 
@@ -63,27 +62,22 @@ class MainWindow(QtGui.QMainWindow):
         self.connect(self.exitAct, QtCore.SIGNAL("triggered()"), self, QtCore.SLOT("close()"))
 
         self.teamAct = QtGui.QAction("&Configure Teams", self)
-        self.teamAct.setShortcut("Ctrl+T")
         self.teamAct.setStatusTip("Add/Remove teams from the draft")
         self.connect(self.teamAct, QtCore.SIGNAL("triggered()"), self.edit_teams)
 
         self.keeperAct = QtGui.QAction("&Add Keeper", self)
-        self.keeperAct.setShortcut("Ctrl+K")
         self.keeperAct.setStatusTip("Add a player as a keeper from a keeper league")
         self.connect(self.keeperAct, QtCore.SIGNAL("triggered()"), self.add_keeper)
         
         self.extraAct = QtGui.QAction("&Add Extra Player", self)
-        self.extraAct.setShortcut("Ctrl+A")
         self.extraAct.setStatusTip("Add an extra player to a team, outside of the draft")
         self.connect(self.extraAct, QtCore.SIGNAL("triggered()"), self.extra_player)
 
         self.removeAct = QtGui.QAction("&Remove Player", self)
-        self.removeAct.setShortcut("Ctrl+R")
         self.removeAct.setStatusTip("Remove a player from a team")
         self.connect(self.removeAct, QtCore.SIGNAL("triggered()"), self.remove_player)
 
         self.draftAct = QtGui.QAction("&Draft Unlisted Player", self)
-        self.draftAct.setShortcut("Ctrl+D")
         self.draftAct.setStatusTip("Draft a player that's not listed in the available player table")
         self.connect(self.draftAct, QtCore.SIGNAL("triggered()"), self.draft_unlisted_player)
 
@@ -170,7 +164,7 @@ class MainWindow(QtGui.QMainWindow):
     def about(self):
         QtGui.QMessageBox.about(self, "About Fantasy Football Draft",
                 "Fantasy Football Draft version " + str(self.version) + "\n\n"
-                +"Copyright (C) 2007-2008 Aaron Brice (aaron.brice@gmail.com) \n\n"
+                +"Copyright (C) 2007-2009 Aaron Brice (aaron.brice@gmail.com) \n\n"
                 +"This program is Free Software, licensed under the GPLv2\n"
                 +"See the file COPYING for details\n")
 
@@ -231,6 +225,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         if self.pause_button.text() == "Start":
             self.timer.start()
             self.pause_button.setText("Pause")
+            # If we're starting on player 1 and they have a first round keeper, skip to the next
+            self.check_keeper()
         elif self.pause_button.text() == "Pause":
             self.timer.pause()
             self.pause_button.setText("Start")
@@ -346,7 +342,9 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.timer.start()
         if self.pause_button.text() == "Start":
             self.pause_button.setText("Pause")
+        self.check_keeper()
 
+    def check_keeper(self):
         # See if the current team has already drafted someone this round
         round = "%02d)" % int(self.current_round)
         itemlist = self.drafted_view.widget(self.current_draft_idx).findItems(round, QtCore.Qt.MatchStartsWith)
@@ -603,7 +601,6 @@ class CustomSortFilterProxyModel(QtGui.QSortFilterProxyModel):
             return int(ldata) < int(rdata)
         else:
             return ldata < rdata
-
 
 class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
     def __init__(self, team_list = [], timer = 0, autopick = False, parent = None):

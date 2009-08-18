@@ -3,24 +3,24 @@
 #require 'rubygems'
 require 'hpricot'
 
-bye_weeks = { 'Det' => '4', 'Ind' => '4', 'Mia' => '4', 'NE' => '4', 'NYG' => '4', 'Sea' => '4', 
-              'Cle' => '5', 'NYJ' => '5', 'Oak' => '5', 'StL' => '5',
-              'Buf' => '6', 'KC'  => '6', 'Pit' => '6', 'Ten' => '6',
-              'Ari' => '7', 'Atl' => '7', 'Jac' => '7', 'Phi' => '7',
-              'Chi' => '8', 'Cin' => '8', 'Den' => '8', 'GB'  => '8', 'Hou'  => '8', 'Min' => '8',
-              'Car' => '9', 'NO'  => '9', 'SD'  => '9', 'SF'  => '9',
-              'Bal' => '10', 'Dal' => '10', 'TB' => '10', 'Was' => '10' }
+bye_weeks = { 'Ari' => '4', 'Atl' => '4', 'Car' => '4', 'Phi' => '4',
+              'Chi' => '5', 'GB'  => '5', 'NO'  => '5', 'SD'  => '5',
+              'Dal' => '6', 'Ind' => '6', 'Mia' => '6', 'SF'  => '6',
+              'Bal' => '7', 'Den' => '7', 'Det' => '7', 'Jac' => '7', 'Sea' => '7', 'Ten' => '7',
+              'Cin' => '8', 'KC'  => '8', 'NE'  => '8', 'Pit' => '8', 'TB'  => '8', 'Was' => '8',
+              'Buf' => '9', 'Cle' => '9', 'Min' => '9', 'NYJ' => '9', 'Oak' => '9', 'StL' => '9',
+              'Hou' => '10', 'NYG' => '10' }
 
 outfile = File.new("playerdata.csv", "w")
 
-headers = ['Player','Team','Position','Bye','Projected','2007 Actual','Fan Pts','Passing Yds','Passing TD','Int','Sack','Rushing Yds','Rushing TD','Receiving Yds','Receiving TD','Ret TD','Misc 2pt','Fum Lost']
+headers = ['Player','Team','Position','Bye','Projected','2008 Actual','Fan Pts','Passing Yds','Passing TD','Int','Sack','Rushing Yds','Rushing TD','Receiving Yds','Receiving TD','Ret TD','Misc 2pt','Fum Lost']
 
 outfile.puts headers.join(',')
 
 header_map = Hash.new
-header_map['O'] = [nil, nil, nil, nil, nil, 'Projected','2007 Actual', nil, 'Passing Yds','Passing TD','Int','Sack','Rushing Yds','Rushing TD','Receiving Yds','Receiving TD','Ret TD','Misc 2pt','Fum Lost','Fan Pts']
-header_map['K'] = [nil, nil, nil, nil, nil, 'Projected','2007 Actual', nil, nil, nil, nil, nil, nil, nil, 'Fan Pts']
-header_map['DEF'] = [nil, nil, nil, nil, nil, 'Projected','2007 Actual', nil, nil, nil, nil, nil, nil, nil, nil, nil, 'Fan Pts']
+header_map['O'] = [nil, nil, nil, nil, nil, 'Projected','2008 Actual', nil, 'Passing Yds','Passing TD','Int','Sack','Rushing Yds','Rushing TD','Receiving Yds','Receiving TD','Ret TD','Misc 2pt','Fum Lost','Fan Pts']
+header_map['K'] = [nil, nil, nil, nil, nil, 'Projected','2008 Actual', nil, nil, nil, nil, nil, nil, nil, 'Fan Pts']
+header_map['DEF'] = [nil, nil, nil, nil, nil, 'Projected','2008 Actual', nil, nil, nil, nil, nil, nil, nil, nil, nil, 'Fan Pts']
 
 max = { 'O' => 300, 'K' => 50, 'DEF'=> 50 }
 players = Array.new
@@ -28,9 +28,9 @@ players = Array.new
 ['O', 'K', 'DEF'].each do |pos|
     counter = 0
     while counter < max[pos]
-        web_page = "http://football.fantasysports.yahoo.com/f1/27386/players?status=A&pos=#{pos}&cut_type=9&stat1=S_S_2007&sort=PR&count=#{counter}"
+        web_page = "http://football.fantasysports.yahoo.com/f1/373893/players?status=A&pos=#{pos}&stat1=S_S_2008&sort=PR&count=#{counter}"
 
-        doc = IO.popen("wget --load-cookies ~/.mozilla/firefox/*.default/cookies.txt -O - '#{web_page}'") { |f| Hpricot(f) }
+        doc = IO.popen("wget --load-cookies ~/cookies.txt -O - '#{web_page}'") { |f| Hpricot(f) }
 
         doc.search("table.teamtable/tbody/tr").each do |row|
             data = Hash.new

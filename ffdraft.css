@@ -32,3 +32,7 @@ QListView {
     font: 20px;
 }
 
+QDialog QLabel { font: 20px; }
+QDialog QComboBox { font: 20px; }
+QDialog QLineEdit { font: 20px; }
+QDialog QPushButton { font: 20px; }
