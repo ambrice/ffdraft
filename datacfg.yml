@@ -1,0 +1,33 @@
+Positions:
+  - RB
+  - QB
+  - WR
+  - TE
+  - K
+  - DEF
+
+Headers:
+  All:
+    - Player
+    - Team
+    - Position
+    - Bye
+    - Projected
+    - 2008 Actual
+  QB:
+    - Passing Yds
+    - Passing TD
+    - Int
+    - Sack
+  RB:
+    - Rushing Yds
+    - Rushing TD
+    - Receiving Yds
+    - Receiving TD
+  WR:
+    - Receiving Yds
+    - Receiving TD
+    - Ret TD
+  TE:
+    - Receiving Yds
+    - Receiving TD
