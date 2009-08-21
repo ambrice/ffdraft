@@ -531,6 +531,11 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                     round = round + 1
             else:
                 round = int(self.current_round)
+            # See if they already have a player in this round, add it to the next round
+            round_string = "%02d)" % (round)
+            while (len(self.drafted_view.widget(drafted_idx).findItems(round_string, QtCore.Qt.MatchStartsWith)) > 0):
+                round += 1
+                round_string = "%02d)" % (round)
         else:
             round = int(self.current_round)
 
