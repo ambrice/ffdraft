@@ -218,6 +218,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.saved_rows = {}
 
         self.draft_tmpl = "%02d) %s: %s (Bye: %s)"
+        self.draft_re = re.compile(r'^(\d+)\) (\w+): (.+)( \(Bye: [\?\d]+\))$')
 
         self.save_file = ""
         self.open_file("playerdata.csv")
@@ -351,13 +352,15 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         itemlist = self.drafted_view.widget(self.current_draft_idx).findItems(round, QtCore.Qt.MatchStartsWith)
         if len(itemlist) > 0:
             tmp_string = str(itemlist[0].text())
-            m = re.match(r'^\d+\) \w+: (.+)( \(Bye: [\?\d]+\))$', tmp_string)
+            m = self.draft_re.match(tmp_string)
             if m:
-                name = m.group(1)
+                position = m.group(2)
+                name = m.group(3)
             msg = "%s automatically selects %s" % (self.drafting_field.text(), name)
             self.timer.pause()
             QtGui.QMessageBox.information(self, "Automatic pick", msg)
             self.timer.start()
+            self.update_pick_list(name, position, automatic=True)
             self.next_team()
 
     def get_team(self, idx=None):
@@ -370,11 +373,21 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         else:
             return item_str
 
-    def update_pick_list(self, name, position):
-        prev = "%s (%s) -- %s" % (name, position, self.get_team())
+    def update_pick_list(self, name, position, team=None, automatic=False):
+        if team == None:
+            team = self.get_team()
+        prev = "%s (%s) -- %s" % (name, position, team)
+        if (automatic):
+            prev = ' '.join([prev, ' / Auto'])
         self.previous_picks_list.insertItem(0, QtGui.QListWidgetItem(prev))
         while (self.previous_picks_list.count() > 10):
             self.previous_picks_list.takeItem(10)
+
+    def remove_pick_list(self, name, position, team):
+        prev = "%s (%s) -- %s" % (name, position, team)
+        for i in reversed(range(self.previous_picks_list.count())):
+            if self.previous_picks_list.item(i).text() == prev:
+                self.previous_picks_list.takeItem(i)
 
     def filter_avail(self, tab_idx):
         position = self.tab_bar.tabText(tab_idx)
@@ -546,6 +559,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         draft_string = self.draft_tmpl % (round, position, name, bye)
         
         self.drafted_view.widget(drafted_idx).addItem(QtGui.QListWidgetItem(draft_string))
+        self.update_pick_list(name, position, self.get_team(drafted_idx))
 
         avail_idx = self.filtered_model.mapToSource(filtered_idx)
         self.saved_rows[draft_string] = self.avail_model.takeRow(avail_idx.row())
@@ -566,6 +580,12 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             # the long way?
             for i in reversed(range(list.count())):
                 if list.item(i).text() == player.text():
+                    m = self.draft_re.match(draft_string)
+                    if m:
+                        position = m.group(2)
+                        name = m.group(3)
+                        team = self.get_team(team_idx)
+                        self.remove_pick_list(name, position, team)
                     list.takeItem(i)
 
             if self.saved_rows.has_key(draft_string):
