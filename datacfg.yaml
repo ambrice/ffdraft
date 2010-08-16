@@ -13,12 +13,11 @@ Headers:
     - Position
     - Bye
     - Projected
-    - 2008 Actual
+    - Actual
   QB:
     - Passing Yds
     - Passing TD
     - Int
-    - Sack
   RB:
     - Rushing Yds
     - Rushing TD
