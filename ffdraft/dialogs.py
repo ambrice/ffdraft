@@ -13,9 +13,9 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
         self.model.setStringList(team_list)
         self.team_list_view.setModel(self.model)
 
-        self.connect(self.add_button, QtCore.SIGNAL("clicked()"), self.add_team)
-        self.connect(self.move_up_button, QtCore.SIGNAL("clicked()"), self.move_team_up)
-        self.connect(self.move_down_button, QtCore.SIGNAL("clicked()"), self.move_team_down)
+        self.add_button.clicked.connect(self.add_team)
+        self.move_up_button.clicked.connect(self.move_team_up)
+        self.move_down_button.clicked.connect(self.move_team_down)
 
         time = QtCore.QTime()
         min = int(timer) / 60

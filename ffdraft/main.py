@@ -24,53 +24,54 @@ class MainWindow(QtGui.QMainWindow):
         self.loadAct = QtGui.QAction("&Load", self)
         self.loadAct.setShortcut("Ctrl+L")
         self.loadAct.setStatusTip("Load draft from file")
-        self.connect(self.loadAct, QtCore.SIGNAL("triggered()"), self.load)
+        self.loadAct.triggered.connect(self.load)
 
         self.saveAsAct = QtGui.QAction("Save &As", self)
         self.saveAsAct.setStatusTip("Save draft to file")
-        self.connect(self.saveAsAct, QtCore.SIGNAL("triggered()"), self.save_as)
+        self.saveAsAct.triggered.connect(self.save_as)
 
         self.saveAct = QtGui.QAction("&Save", self)
         self.saveAct.setShortcut("Ctrl+S")
         self.saveAct.setStatusTip("Save draft to file")
-        self.connect(self.saveAct, QtCore.SIGNAL("triggered()"), self.save)
+        self.saveAct.triggered.connect(self.save)
 
         self.exportAct = QtGui.QAction("&Export", self)
         self.exportAct.setStatusTip("Export draft results to a text file")
-        self.connect(self.exportAct, QtCore.SIGNAL("triggered()"), self.export)
+        self.exportAct.triggered.connect(self.export)
 
         self.exitAct = QtGui.QAction("E&xit", self)
         self.exitAct.setShortcut("Ctrl+Q")
         self.exitAct.setStatusTip("Exit the application")
-        self.connect(self.exitAct, QtCore.SIGNAL("triggered()"), self, QtCore.SLOT("close()"))
+        self.exitAct.triggered.connect(self.close)
 
         self.teamAct = QtGui.QAction("&Configure Teams", self)
         self.teamAct.setStatusTip("Add/Remove teams from the draft")
-        self.connect(self.teamAct, QtCore.SIGNAL("triggered()"), self.edit_teams)
+        self.teamAct.triggered.connect(self.edit_teams)
 
         self.keeperAct = QtGui.QAction("&Add Keeper", self)
         self.keeperAct.setStatusTip("Add a player as a keeper from a keeper league")
-        self.connect(self.keeperAct, QtCore.SIGNAL("triggered()"), self.add_keeper)
+        self.keeperAct.triggered.connect(self.add_keeper)
         
         self.extraAct = QtGui.QAction("&Add Extra Player", self)
         self.extraAct.setStatusTip("Add an extra player to a team, outside of the draft")
-        self.connect(self.extraAct, QtCore.SIGNAL("triggered()"), self.extra_player)
+        self.extraAct.triggered.connect(self.extra_player)
 
         self.removeAct = QtGui.QAction("&Remove Player", self)
         self.removeAct.setStatusTip("Remove a player from a team")
-        self.connect(self.removeAct, QtCore.SIGNAL("triggered()"), self.remove_player)
+        self.removeAct.triggered.connect(self.remove_player)
 
         self.draftAct = QtGui.QAction("&Draft Unlisted Player", self)
         self.draftAct.setStatusTip("Draft a player that's not listed in the available player table")
-        self.connect(self.draftAct, QtCore.SIGNAL("triggered()"), self.draft_unlisted_player)
+        self.draftAct.triggered.connect(self.draft_unlisted_player)
 
         self.aboutAct = QtGui.QAction("About FFD", self)
         self.aboutAct.setStatusTip("About Fantasy Football Draft")
-        self.connect(self.aboutAct, QtCore.SIGNAL("triggered()"), self.about)
+        self.aboutAct.triggered.connect(self.about)
 
         self.aboutQtAct = QtGui.QAction("About Qt", self)
         self.aboutQtAct.setStatusTip(self.tr("About the Qt GUI library"))
-        self.connect(self.aboutQtAct, QtCore.SIGNAL("triggered()"), QtGui.qApp.aboutQt)
+        self.aboutQtAct.triggered.connect(QtGui.qApp.aboutQt)
+
 
     def createMenus(self):
         self.fileMenu = self.menuBar().addMenu("&File")
@@ -96,14 +97,12 @@ class MainWindow(QtGui.QMainWindow):
         self.playerPopupMenu = QtGui.QMenu(self)
         self.playerPopupMenu.addAction(self.extraAct)
         self.playerPopupMenu.addAction(self.keeperAct)
-        self.connect(self.mainWidget.avail_view, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), 
-                self.showPlayerMenu)
+        self.mainWidget.avail_view.customContextMenuRequested.connect(self.showPlayerMenu)
 
         self.draftedPopupMenu = QtGui.QMenu(self)
         self.draftedPopupMenu.addAction(self.removeAct)
         self.draftedPopupMenu.addAction(self.draftAct)
-        self.connect(self.mainWidget.drafted_view, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), 
-                self.showDraftedMenu)
+        self.mainWidget.drafted_view.customContextMenuRequested.connect(self.showDraftedMenu)
 
     def createStatusBar(self):
         self.statusBar().showMessage("Ready")
@@ -164,10 +163,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         
         self.timer = EggTimer(self)
         self.autopick = False
-        self.connect(self.timer, QtCore.SIGNAL("update(QString)"), self.timerDisplay, QtCore.SLOT("display(QString)"))
-        self.connect(self.reset_button, QtCore.SIGNAL("clicked()"), self.timer.reset)
-        self.connect(self.pause_button, QtCore.SIGNAL("clicked()"), self.pause_timer)
-        self.connect(self.timer, QtCore.SIGNAL("expired()"), self.draft_best_player)
+        self.timer.update.connect(self.timerDisplay.display)
+        self.timer.expired.connect(self.draft_best_player)
+        self.reset_button.clicked.connect(self.timer.reset)
+        self.pause_button.clicked.connect(self.pause_timer)
 
         self.splitter.setSizes([1000, 200])
 
@@ -191,8 +190,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.filtered_model.setSourceModel(self.avail_model)
         self.avail_view.setModel(self.filtered_model)
 
-        self.connect(self.avail_view, QtCore.SIGNAL("doubleClicked(const QModelIndex&)"), self.draft_player)
-        self.connect(self.tab_bar, QtCore.SIGNAL("currentChanged(int)"), self.filter_avail)
+        self.avail_view.doubleClicked.connect(self.draft_player)
+        self.tab_bar.currentChanged.connect(self.filter_avail)
 
         self.current_round = 1
         self.current_draft_idx = 0
