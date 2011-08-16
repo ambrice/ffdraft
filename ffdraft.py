@@ -1,6 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 #
-# Copyright (C) 2007-2010 Aaron Brice
+# Copyright (C) 2007-2011 Aaron Brice
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -18,6 +18,7 @@
 # Read more about GNU General Public License :http://www.gnu.org/licenses/gpl.txt
 #
 import sys
+import os
 from PyQt4 import QtGui
 from ffdraft.main import MainWindow
 
@@ -29,10 +30,9 @@ if __name__ == "__main__":
         app.setStyleSheet(css);
     finally:
         f.close()
-    mainWin = MainWindow()
+    db = sys.argv[1] if len(sys.argv) > 1 else '{0}/ffdraft.db'.format(os.environ['HOME'])
+    mainWin = MainWindow(db)
     mainWin.resize(1200,1000)
-    if len(sys.argv) > 1:
-        mainWin.load_file(sys.argv[1])
     mainWin.show()
     sys.exit(app.exec_())
 

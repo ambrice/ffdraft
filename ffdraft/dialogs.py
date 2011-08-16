@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import models
 from PyQt4 import QtCore, QtGui
 from ffdraft.ui import Ui_TeamDialog, Ui_AddPlayerDialog
 
@@ -9,8 +10,8 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
 
         self.setupUi(self)
 
-        self.model = QtGui.QStringListModel()
-        self.model.setStringList(team_list)
+        #TODO: pass league to TeamModel()
+        self.model = models.TeamModel()
         self.team_list_view.setModel(self.model)
 
         self.add_button.clicked.connect(self.add_team)
@@ -25,18 +26,11 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
         self.autoPick.setChecked(True)
 
     def add_team(self):
-        team = self.team_name_field.text()
-        manager = self.manager_name_field.text()
-
-        if team == "":
+        team = str(self.team_name_field.text())
+        manager = str(self.manager_name_field.text())
+        if team == '':
             return
-
-        full_name = team + " (" + manager + ")"
-
-        new_row = self.model.rowCount()
-        self.model.insertRows(new_row, 1)
-        idx = self.model.index(new_row)
-        self.model.setData(idx, QtCore.QVariant(full_name))
+        self.model.append_team(team, manager)
         self.team_name_field.clear()
         self.manager_name_field.clear()
         self.team_name_field.setFocus()
@@ -46,29 +40,19 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
         if row == self.model.rowCount() - 1:
             # Already at bottom of list
             return
-        old_idx = self.model.createIndex(row, 0)
-        new_idx = self.model.createIndex(row + 1, 0)
-        old_value = self.model.data(old_idx, QtCore.Qt.EditRole)
-        new_value = self.model.data(new_idx, QtCore.Qt.EditRole)
-        self.model.setData(old_idx, new_value)
-        self.model.setData(new_idx, old_value)
-        self.team_list_view.selectionModel().select(new_idx, QtGui.QItemSelectionModel.ClearAndSelect)
+        self.model.move_down(row)
+        self.team_list_view.selectionModel().select(row + 1, QtGui.QItemSelectionModel.ClearAndSelect)
 
     def move_team_up(self):
         row = self.team_list_view.selectedIndexes().pop(0).row()
         if row == 0:
             # Already at top of list
             return
-        old_idx = self.model.createIndex(row, 0)
-        new_idx = self.model.createIndex(row - 1, 0)
-        old_value = self.model.data(old_idx, QtCore.Qt.EditRole)
-        new_value = self.model.data(new_idx, QtCore.Qt.EditRole)
-        self.model.setData(old_idx, new_value)
-        self.model.setData(new_idx, old_value)
-        self.team_list_view.selectionModel().select(new_idx, QtGui.QItemSelectionModel.ClearAndSelect)
+        self.model.move_up(row)
+        self.team_list_view.selectionModel().select(row - 1, QtGui.QItemSelectionModel.ClearAndSelect)
 
     def get_team_list(self):
-        return self.model.stringList()
+        return self.model.team_names()
 
     def get_time_limit(self):
         sec = self.timeEdit.time().second()
