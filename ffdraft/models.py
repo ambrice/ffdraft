@@ -18,10 +18,32 @@ def set_database(path):
 
 ### sqlalchemy models ###
 
+class YahooAuth(Base):
+    __tablename__ = 'yahoo_auth'
+
+    id = Column(Integer, primary_key=True)
+    access_token_key = Column(String)
+    access_token_secret = Column(String)
+    session_handle = Column(String)
+
+    @staticmethod
+    def total_count():
+        return session.query(func.count(YahooAuth.id)).scalar()
+
+    def __init__(self, key, secret, session_handle):
+        self.access_token_key = key
+        self.access_token_secret = secret
+        self.session_handle = session_handle
+
+    def save(self):
+        session.add(self)
+        session.commit()
+
 class League(Base):
     __tablename__ = 'leagues'
 
     id = Column(Integer, primary_key=True)
+    yahoo_id = Column(Integer)
     name = Column(String)
     current_round = Column(Integer)
     current_draft_index = Column(Integer)
@@ -46,6 +68,7 @@ class Team(Base):
     __tablename__ = 'teams'
 
     id = Column(Integer, primary_key=True)
+    yahoo_id = Column(Integer)
     league_id = Column(Integer, ForeignKey('leagues.id'))
     name = Column(String)
     manager = Column(String)

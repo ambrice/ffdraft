@@ -2,18 +2,18 @@
 
 import re
 import ffdraft.models as models
+import os
 from PyQt4 import QtCore, QtGui
 from ffdraft.ui import Ui_MainWidget
 from ffdraft.utils import EggTimer
 from ffdraft.dialogs import TeamDialog, AddPlayerDialog
+from ffdraft.yahoo.auth import OAuthWrapper
 
 class MainWindow(QtGui.QMainWindow):
-    def __init__(self, dbfile):
+    def __init__(self, dbfile=None):
         QtGui.QMainWindow.__init__(self)
 
-        models.set_database(dbfile)
-
-        self.mainWidget = MainWidget()
+        self.mainWidget = MainWidget(dbfile)
         self.setCentralWidget(self.mainWidget)
         self.createActions()
         self.createMenus()
@@ -22,6 +22,18 @@ class MainWindow(QtGui.QMainWindow):
         self.version = '2011-08'
 
     def createActions(self):
+        self.newAct = QtGui.QAction('&New', self)
+        self.newAct.setStatusTip('Start a New Fantasy Football Draft session')
+        self.newAct.triggered.connect(self.newdb)
+
+        self.openAct = QtGui.QAction('&Open', self)
+        self.openAct.setStatusTip('Open a previous Fantasy Football Draft session')
+        self.openAct.triggered.connect(self.opendb)
+
+        self.yahooAct = QtGui.QAction('&Import', self)
+        self.yahooAct.setStatusTip('Import League information from Yahoo')
+        self.yahooAct.triggered.connect(self.yahoo)
+
         self.exportAct = QtGui.QAction('&Export', self)
         self.exportAct.setStatusTip('Export draft results to a text file')
         self.exportAct.triggered.connect(self.export)
@@ -30,10 +42,6 @@ class MainWindow(QtGui.QMainWindow):
         self.exitAct.setShortcut('Ctrl+Q')
         self.exitAct.setStatusTip('Exit the application')
         self.exitAct.triggered.connect(self.close)
-
-        #self.leagueAct = QtGui.QAction('Configure &League')
-        #self.leagueAct.setStatusTip('Add/Select League')
-        #self.leagueAct.triggered.connect(self.edit_league)
 
         self.teamAct = QtGui.QAction('&Configure Teams', self)
         self.teamAct.setStatusTip('Add/Remove teams from the draft')
@@ -66,6 +74,8 @@ class MainWindow(QtGui.QMainWindow):
 
     def createMenus(self):
         self.fileMenu = self.menuBar().addMenu('&File')
+        self.fileMenu.addAction(self.newAct)
+        self.fileMenu.addAction(self.openAct)
         self.fileMenu.addAction(self.exportAct)
         self.fileMenu.addSeparator()
         self.fileMenu.addAction(self.exitAct)
@@ -104,6 +114,15 @@ class MainWindow(QtGui.QMainWindow):
     def edit_teams(self):
         self.mainWidget.edit_teams()
 
+    def newdb(self):
+        self.mainWidget.newdb()
+
+    def opendb(self):
+        self.mainWidget.opendb()
+
+    def yahoo(self):
+        self.mainWidget.import_from_yahoo()
+
     def export(self):
         self.mainWidget.export()
 
@@ -128,13 +147,10 @@ class MainWindow(QtGui.QMainWindow):
 
 
 class MainWidget(QtGui.QWidget, Ui_MainWidget):
-    def __init__(self, parent = None):
+    def __init__(self, dbfile=None, parent = None):
         QtGui.QWidget.__init__(self, parent)
 
         self.setupUi(self)
-
-        #TODO: Replace this
-        self.league = models.session.query(models.League).first()
 
         self.drafted_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.avail_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -165,27 +181,19 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.avail_view.setModel(self.filtered_model)
         self.avail_view.hideColumn(0)
         self.avail_view.hideColumn(1)
-        self.avail_view.horizontalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
+        self.avail_view.resizeColumnsToContents()
 
         self.avail_view.doubleClicked.connect(self.draft_player)
         self.tab_bar.currentChanged.connect(self.filter_avail)
 
-        self.timer.set_countdown(self.league.time_limit)
-        team_model = models.TeamModel()
-        self.team_list = team_model.team_names()
+        if not dbfile:
+            self.league = None
+        else:
+            self.opendb(dbfile)
 
-        self.drafted_model = {}
-        for team in self.team_list:
-            self.drafted_model[team] = models.DraftedPlayerModel(team)
-            tview = QtGui.QListView(self.drafted_view)
-            tview.setModel(self.drafted_model[team])
-            tview.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-            self.drafted_view.addItem(tview, team)
-
-        self.round_field.setText(str(self.league.current_round))
-        self.drafting_field.setText(self.get_team(self.league.current_draft_index))
-        self.next_field.setText(self.get_team(self.next_draft_idx()))
-        self.previous_picks_list.clear()
+        # Yahoo OAuth stuff
+        self.yahoo = OAuthWrapper()
+        self.yahoo.add_token_update_callback(self.update_access_token)
 
     def pause_timer(self):
         if self.pause_button.text() == 'Start':
@@ -435,4 +443,42 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 f.write(str(player) + '\n')
             f.write('\n\n')
         f.close()
+
+    def newdb(self):
+        dbfile = QtGui.QFileDialog.getSaveFileName(None, "Create Session", QtCore.QDir.homePath(), "FF Draft (*.ffd)")
+        if dbfile != '':
+            try:
+                os.remove(dbfile)
+            except OSError:
+                pass
+            models.set_database(dbfile)
+
+    def opendb(self):
+        loadfile = QtGui.QFileDialog.getOpenFileName(None, "Open Session", QtCore.QDir.homePath(), "FF Draft (*.ffd)")
+        if loadfile != '' and os.access(loadfile, os.R_OK|os.W_OK):
+            models.set_database(loadfile)
+            self.league = models.session.query(models.League).first()
+
+    def import_from_yahoo(self):
+        if models.YahooAuth.total_count() == 0:
+            self.new_access_token()
+
+    def init_league(self):
+        self.timer.set_countdown(self.league.time_limit)
+        team_model = models.TeamModel()
+        self.team_list = team_model.team_names()
+
+        self.drafted_model = {}
+        for team in self.team_list:
+            self.drafted_model[team] = models.DraftedPlayerModel(team)
+            tview = QtGui.QListView(self.drafted_view)
+            tview.setModel(self.drafted_model[team])
+            tview.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+            self.drafted_view.addItem(tview, team)
+
+        self.round_field.setText(str(self.league.current_round))
+        self.drafting_field.setText(self.get_team(self.league.current_draft_index))
+        self.next_field.setText(self.get_team(self.next_draft_idx()))
+        self.previous_picks_list.clear()
+
 

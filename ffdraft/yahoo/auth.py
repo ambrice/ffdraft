@@ -1,8 +1,6 @@
 import cgi
 import urllib2
 import httplib
-import os
-import time
 import oauth.oauth as oauth
 
 # ffdraft API keys registered with yahoo developer network
@@ -14,40 +12,68 @@ auth_url='https://api.login.yahoo.com/oauth/v2/request_auth'
 access_url='https://api.login.yahoo.com/oauth/v2/get_token'
 
 class OAuthWrapper(object):
-    def __init__(self):
+    def __init__(self, access_token_key=None, access_token_secret=None, session_handle=None):
         self.consumer = oauth.OAuthConsumer(consumer_key, consumer_secret)
         self.signature_method = oauth.OAuthSignatureMethod_HMAC_SHA1()
-        self.update_access_token()
+        self.access_token = oauth.OAuthToken(access_token_key, access_token_secret) if access_token_key and access_token_secret else None
+        self.session_handle = session_handle
+        self.token_update_callbacks = []
+
+    def add_token_update_callback(self, cb):
+        self.token_update_callbacks.append(cb)
 
     def request(self, url):
+        if not self.access_token or not self.session_handle:
+            return None
+        response = None
         oauth_request = oauth.OAuthRequest.from_consumer_and_token(self.consumer, self.access_token, http_url=url)
         oauth_request.sign_request(self.signature_method, self.consumer, self.access_token)
-        response = urllib2.urlopen(oauth_request.to_url())
+        try:
+            response = urllib2.urlopen(oauth_request.to_url())
+        except urllib2.HTTPError as e:
+            print 'Received HTTP Error {0}'.format(e.code)
+            if e.code == 401:
+                self.refresh_access_token()
+                oauth_request = oauth.OAuthRequest.from_consumer_and_token(self.consumer, self.access_token, http_url=url)
+                oauth_request.sign_request(self.signature_method, self.consumer, self.access_token)
+                try:
+                    response = urllib2.urlopen(oauth_request.to_url())
+                except urllib2.HTTPError:
+                    pass
         return response
 
-    def get_access_token(self):
+    def create_access_token(self):
+        request_token = self.get_request_token()
+        verifier = self.get_user_authorization(request_token)
+        self.access_token, self.session_handle = self.get_access_token(self, request_token, verifier)
+
+    def get_request_token(self):
+        # Step 1: Get a Request Token
         connection = httplib.HTTPSConnection('api.login.yahoo.com')
         signature_method = oauth.OAuthSignatureMethod_PLAINTEXT()
-        # Step 1: Get a Request Token
         oauth_request = oauth.OAuthRequest.from_consumer_and_token(self.consumer, callback='oob', http_url=token_url)
         oauth_request.sign_request(signature_method, self.consumer, None)
         connection.request(oauth_request.http_method, token_url, headers=oauth_request.to_header())
         response = connection.getresponse().read()
-        request_token = oauth.OAuthToken.from_string(response)
+        return oauth.OAuthToken.from_string(response)
+
+    def get_user_authorization(self, request_token):
         # Step 2: Get User Authorization
         print('Go to: {0}?oauth_token={1}'.format(auth_url, request_token.key))
-        verifier = raw_input('Verification code: ')
+        return raw_input('Verification code: ')
+
+    def get_access_token(self, request_token, verifier):
         # Step 3: Exchange Request Token and Verifier for Access Token
+        connection = httplib.HTTPSConnection('api.login.yahoo.com')
+        signature_method = oauth.OAuthSignatureMethod_PLAINTEXT()
         oauth_request = oauth.OAuthRequest.from_consumer_and_token(self.consumer, request_token, verifier=verifier, http_url=access_url)
         oauth_request.sign_request(signature_method, self.consumer, request_token)
         connection.request(oauth_request.http_method, access_url, headers=oauth_request.to_header())
         response = connection.getresponse().read()
         params = cgi.parse_qs(response, keep_blank_values=False)
-        self.session_handle = params['oauth_session_handle'][0]
-        self.access_token = oauth.OAuthToken.from_string(response)
+        return (oauth.OAuthToken.from_string(response), params['oauth_session_handle'][0])
 
     def refresh_access_token(self):
-        print('Refreshing access token...')
         connection = httplib.HTTPSConnection('api.login.yahoo.com')
         signature_method = oauth.OAuthSignatureMethod_PLAINTEXT()
         oauth_request = oauth.OAuthRequest.from_consumer_and_token(self.consumer, self.access_token, http_url=access_url)
@@ -58,26 +84,6 @@ class OAuthWrapper(object):
         params = cgi.parse_qs(response, keep_blank_values=False)
         self.session_handle = params['oauth_session_handle'][0]
         self.access_token = oauth.OAuthToken.from_string(response)
-    
-    def store_access_token(self, keypath):
-        with open(keypath, 'w') as f:
-            f.write('{0}\n'.format(self.access_token.key))
-            f.write('{0}\n'.format(self.access_token.secret))
-            f.write('{0}\n'.format(self.session_handle))
-
-    def update_access_token(self):
-        keypath='{0}/.ffdraft'.format(os.getenv('HOME'))
-        try:
-            with open(keypath, 'r') as f:
-                key = f.readline().rstrip()
-                secret = f.readline().rstrip()
-                self.session_handle = f.readline().rstrip()
-                self.access_token = oauth.OAuthToken(key, secret)
-            if time.time() - os.path.getmtime(keypath) > 3000:
-                self.refresh_access_token()
-                self.store_access_token(keypath)
-        except(IOError, OSError):
-            self.get_access_token()
-            self.store_access_token(keypath)
-
+        for cb in self.token_update_callbacks:
+            cb(self.access_token.key, self.access_token.secret, self.session_handle)
 
