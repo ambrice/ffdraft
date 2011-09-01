@@ -18,7 +18,6 @@
 # Read more about GNU General Public License :http://www.gnu.org/licenses/gpl.txt
 #
 import sys
-import os
 from PyQt4 import QtGui
 from ffdraft.main import MainWindow
 
@@ -30,7 +29,7 @@ if __name__ == "__main__":
         app.setStyleSheet(css);
     finally:
         f.close()
-    db = sys.argv[1] if len(sys.argv) > 1 else '{0}/ffdraft.db'.format(os.environ['HOME'])
+    db = sys.argv[1] if len(sys.argv) > 1 else None
     mainWin = MainWindow(db)
     mainWin.resize(1200,1000)
     mainWin.show()

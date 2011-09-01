@@ -6,7 +6,7 @@ import os
 from PyQt4 import QtCore, QtGui, QtWebKit
 from ffdraft.ui import Ui_MainWidget
 from ffdraft.utils import EggTimer
-from ffdraft.dialogs import TeamDialog, AddPlayerDialog
+from ffdraft.dialogs import TeamDialog, AddPlayerDialog, WebAuthDialog
 from ffdraft.yahoo.auth import OAuthWrapper
 
 class MainWindow(QtGui.QMainWindow):
@@ -22,15 +22,15 @@ class MainWindow(QtGui.QMainWindow):
         self.version = '2011-08'
 
     def createActions(self):
-        self.newAct = QtGui.QAction('&New', self)
+        self.newAct = QtGui.QAction('&New Session', self)
         self.newAct.setStatusTip('Start a New Fantasy Football Draft session')
         self.newAct.triggered.connect(self.newdb)
 
-        self.openAct = QtGui.QAction('&Open', self)
+        self.openAct = QtGui.QAction('&Open Session', self)
         self.openAct.setStatusTip('Open a previous Fantasy Football Draft session')
         self.openAct.triggered.connect(self.opendb)
 
-        self.yahooAct = QtGui.QAction('&Import', self)
+        self.yahooAct = QtGui.QAction('&Import From Yahoo', self)
         self.yahooAct.setStatusTip('Import League information from Yahoo')
         self.yahooAct.triggered.connect(self.yahoo)
 
@@ -468,10 +468,19 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
     def import_from_yahoo(self):
         if models.YahooAuth.total_count() == 0:
-            token = self.yahoo.get_request_token()
-            self.web = QtWebKit.QWebView(None)
-            self.web.load(QtCore.QUrl(token.get_callback_url()))
-            self.web.show()
+            request_token = self.yahoo.get_request_token()
+            dlg = WebAuthDialog(request_token.get_callback_url())
+            if (dlg.exec_() != QtGui.QDialog.Accepted):
+                return
+            verification = dlg.verification_edit.text()
+            self.yahoo.access_token, self.yahoo.session_handle = self.yahoo.get_access_token(request_token, verification)
+            auth = models.YahooAuth(self.yahoo.access_token.key, self.yahoo.access_token.secret, self.yahoo.session_handle)
+            auth.save()
+        else:
+            auth = models.YahooAuth.first()
+            self.yahoo = OAuthWrapper(auth.access_token_key, auth.access_token_secret, auth.session_handle)
+        response = self.yahoo.request('http://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl/leagues')
+        print response.read()
 
     def init_league(self):
         self.timer.set_countdown(self.league.time_limit)
@@ -491,6 +500,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.next_field.setText(self.get_team(self.next_draft_idx()))
         self.previous_picks_list.clear()
 
-    def update_access_token(self):
-        print 'Updating Access token'
+    def update_access_token(self, key, secret, handle):
+        auth = models.YahooAuth.first()
+        auth.access_token_key = key
+        auth.access_token_secret = secret
+        auth.session_handle = handle
+        auth.save()
 

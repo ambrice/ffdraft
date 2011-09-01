@@ -2,7 +2,7 @@
 
 import models
 from PyQt4 import QtCore, QtGui
-from ffdraft.ui import Ui_TeamDialog, Ui_AddPlayerDialog
+from ffdraft.ui import Ui_TeamDialog, Ui_AddPlayerDialog, Ui_WebAuthDialog
 
 class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
     def __init__(self, team_list = [], timer = 0, autopick = False, parent = None):
@@ -76,3 +76,15 @@ class AddPlayerDialog(QtGui.QDialog, Ui_AddPlayerDialog):
         self.position_combo_box.addItem("K")
         self.position_combo_box.addItem("DEF")
 
+class WebAuthDialog(QtGui.QDialog, Ui_WebAuthDialog):
+    def __init__(self, url=None, parent=None):
+        QtGui.QDialog.__init__(self, parent)
+
+        self.setupUi(self)
+        self.resize(512, 649)
+        if url:
+            self.webView.load(QtCore.QUrl(url))
+
+    def resizeEvent(self, e):
+        print 'Dialog: {0}x{1}'.format(e.size().width(), e.size().height())
+        QtGui.QDialog.resizeEvent(self, e)

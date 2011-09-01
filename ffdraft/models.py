@@ -30,6 +30,10 @@ class YahooAuth(Base):
     def total_count():
         return session.query(func.count(YahooAuth.id)).scalar()
 
+    @staticmethod
+    def first():
+        return session.query(YahooAuth).order_by(YahooAuth.id).first()
+
     def __init__(self, key, secret, session_handle):
         self.access_token_key = key
         self.access_token_secret = secret
