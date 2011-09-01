@@ -3,7 +3,7 @@
 import re
 import ffdraft.models as models
 import os
-from PyQt4 import QtCore, QtGui
+from PyQt4 import QtCore, QtGui, QtWebKit
 from ffdraft.ui import Ui_MainWidget
 from ffdraft.utils import EggTimer
 from ffdraft.dialogs import TeamDialog, AddPlayerDialog
@@ -76,6 +76,7 @@ class MainWindow(QtGui.QMainWindow):
         self.fileMenu = self.menuBar().addMenu('&File')
         self.fileMenu.addAction(self.newAct)
         self.fileMenu.addAction(self.openAct)
+        self.fileMenu.addAction(self.yahooAct)
         self.fileMenu.addAction(self.exportAct)
         self.fileMenu.addSeparator()
         self.fileMenu.addAction(self.exitAct)
@@ -175,20 +176,16 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.tab_bar.addTab('DEF')
         self.vboxlayout2.insertWidget(0, self.tab_bar)
 
-        self.avail_model = models.PlayerModel()
-        self.filtered_model = models.PlayerFilterProxyModel()
-        self.filtered_model.setSourceModel(self.avail_model)
-        self.avail_view.setModel(self.filtered_model)
-        self.avail_view.hideColumn(0)
-        self.avail_view.hideColumn(1)
-        self.avail_view.resizeColumnsToContents()
 
         self.avail_view.doubleClicked.connect(self.draft_player)
         self.tab_bar.currentChanged.connect(self.filter_avail)
 
-        if not dbfile:
-            self.league = None
-        else:
+        self.timer.set_countdown(60)
+        self.team_list = []
+        self.drafted_model = {}
+
+        self.league = models.League('Unnamed')
+        if dbfile:
             self.opendb(dbfile)
 
         # Yahoo OAuth stuff
@@ -453,15 +450,28 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 pass
             models.set_database(dbfile)
 
-    def opendb(self):
-        loadfile = QtGui.QFileDialog.getOpenFileName(None, "Open Session", QtCore.QDir.homePath(), "FF Draft (*.ffd)")
+    def opendb(self, loadfile=None):
+        if not loadfile:
+            loadfile = QtGui.QFileDialog.getOpenFileName(None, "Open Session", QtCore.QDir.homePath(), "FF Draft (*.ffd)")
         if loadfile != '' and os.access(loadfile, os.R_OK|os.W_OK):
             models.set_database(loadfile)
-            self.league = models.session.query(models.League).first()
+            if models.League.total_count() > 0:
+                # TODO: pick league
+                self.league = models.session.query(models.League).first()
+            self.avail_model = models.PlayerModel()
+            self.filtered_model = models.PlayerFilterProxyModel()
+            self.filtered_model.setSourceModel(self.avail_model)
+            self.avail_view.setModel(self.filtered_model)
+            self.avail_view.hideColumn(0)
+            self.avail_view.hideColumn(1)
+            self.avail_view.resizeColumnsToContents()
 
     def import_from_yahoo(self):
         if models.YahooAuth.total_count() == 0:
-            self.new_access_token()
+            token = self.yahoo.get_request_token()
+            self.web = QtWebKit.QWebView(None)
+            self.web.load(QtCore.QUrl(token.get_callback_url()))
+            self.web.show()
 
     def init_league(self):
         self.timer.set_countdown(self.league.time_limit)
@@ -481,4 +491,6 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.next_field.setText(self.get_team(self.next_draft_idx()))
         self.previous_picks_list.clear()
 
+    def update_access_token(self):
+        print 'Updating Access token'
 

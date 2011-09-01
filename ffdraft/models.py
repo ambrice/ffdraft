@@ -50,6 +50,10 @@ class League(Base):
     time_limit = Column(Integer)
     autopick = Column(Integer)
 
+    @staticmethod
+    def total_count():
+        return session.query(func.count(League.id)).scalar()
+
     def __init__(self, name):
         self.name = name
         self.current_round = 1

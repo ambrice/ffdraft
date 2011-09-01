@@ -15,7 +15,10 @@ class OAuthWrapper(object):
     def __init__(self, access_token_key=None, access_token_secret=None, session_handle=None):
         self.consumer = oauth.OAuthConsumer(consumer_key, consumer_secret)
         self.signature_method = oauth.OAuthSignatureMethod_HMAC_SHA1()
-        self.access_token = oauth.OAuthToken(access_token_key, access_token_secret) if access_token_key and access_token_secret else None
+        if access_token_key and access_token_secret:
+            self.access_token = oauth.OAuthToken(access_token_key, access_token_secret) 
+        else:
+            self.access_token = None
         self.session_handle = session_handle
         self.token_update_callbacks = []
 
@@ -55,7 +58,10 @@ class OAuthWrapper(object):
         oauth_request.sign_request(signature_method, self.consumer, None)
         connection.request(oauth_request.http_method, token_url, headers=oauth_request.to_header())
         response = connection.getresponse().read()
-        return oauth.OAuthToken.from_string(response)
+        token = oauth.OAuthToken.from_string(response)
+        params = cgi.parse_qs(response, keep_blank_values=False)
+        token.set_callback(params['xoauth_request_auth_url'][0])
+        return token
 
     def get_user_authorization(self, request_token):
         # Step 2: Get User Authorization
@@ -87,3 +93,7 @@ class OAuthWrapper(object):
         for cb in self.token_update_callbacks:
             cb(self.access_token.key, self.access_token.secret, self.session_handle)
 
+if __name__ == "__main__":
+    auth = OAuthWrapper()
+    token = auth.get_request_token()
+    print token.get_callback_url()
