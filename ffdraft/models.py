@@ -1,6 +1,9 @@
 import json
 import re
+from xml.etree import ElementTree
+
 from PyQt4 import QtCore, QtGui
+
 from sqlalchemy import func, create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
@@ -15,6 +18,15 @@ def set_database(path):
     Session.configure(bind=engine)
     session = Session()
     Base.metadata.create_all(engine)
+
+def remove_namespace(root, namespace):
+    ns = '{{{0}}}'.format(namespace)
+    nsl = len(ns)
+    if root.tag.startswith(ns):
+        root.tag = root.tag[nsl:]
+    for elem in root.getiterator():
+        if elem.tag.startswith(ns):
+            elem.tag = elem.tag[nsl:]
 
 ### sqlalchemy models ###
 
@@ -58,8 +70,32 @@ class League(Base):
     def total_count():
         return session.query(func.count(League.id)).scalar()
 
-    def __init__(self, name):
+    @staticmethod
+    def names():
+        return [ row.name for row in session.query(League.name).all() ]
+
+    @staticmethod
+    def find_by_name(name):
+        return session.query(League).filter_by(name=str(name)).one()
+
+    @staticmethod
+    def load_from_xml(xml):
+        session.query(League).delete()
+        root = ElementTree.fromstring(xml)
+        remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
+        leagues = []
+        for leaguexml in root.findall('users/user/games/game/leagues/league'):
+            name = leaguexml.findtext('name')
+            yahoo_id = leaguexml.findtext('league_id')
+            league = League(name, yahoo_id)
+            session.add(league)
+            leagues.append(league)
+        session.commit()
+        return leagues
+
+    def __init__(self, name, yahoo_id=None):
         self.name = name
+        self.yahoo_id = yahoo_id
         self.current_round = 1
         self.current_draft_index = 0
         self.time_limit = 120
@@ -84,11 +120,30 @@ class Team(Base):
 
     league = relationship('League', backref=backref('teams', order_by=id))
 
-    def __init__(self, league, name, manager, order):
+    @staticmethod
+    def load_from_xml(xml):
+        root = ElementTree.fromstring(xml)
+        remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
+        league_yahoo_id = root.findtext('league/league_id')
+        league = session.query(League).filter_by(yahoo_id=league_yahoo_id).one()
+        session.query(Team).filter_by(league_id=league.id).delete()
+        teams = []
+        for order, teamxml in enumerate(root.findall('league/teams/team')):
+            name = teamxml.findtext('name')
+            yahoo_id = teamxml.findtext('team_id')
+            manager = teamxml.findtext('managers/manager/nickname')
+            team = Team(league, name, manager, order, yahoo_id)
+            session.add(team)
+            teams.append(team)
+        session.commit()
+        return teams
+
+    def __init__(self, league, name, manager, order, yahoo_id=None):
         self.league = league
         self.name = name
         self.manager = manager
         self.order = order
+        self.yahoo_id = yahoo_id
 
     def __repr__(self):
         return "<Team({0},'{1}','{2}',{3})>".format(self.league, self.name, self.manager, self.order)
@@ -103,6 +158,27 @@ class Player(Base):
     team = Column(String)
     bye = Column(Integer)
     position = Column(String)
+    img_url = Column(String)
+
+    @staticmethod
+    def clear():
+        session.query(Player).delete()
+        session.commit()
+
+    @staticmethod
+    def append_from_xml(xml, start):
+        root = ElementTree.fromstring(xml)
+        remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
+        for rank, playerxml in enumerate(root.findall('league/players/player'), start+1):
+            yahoo_id = playerxml.findtext('player_id')
+            name = playerxml.findtext('name/full')
+            team = playerxml.findtext('editorial_team_abbr')
+            bye = playerxml.findtext('bye_weeks/week')
+            position = playerxml.findtext('display_position')
+            img_url = playerxml.findtext('image_url')
+            player = Player(yahoo_id, rank, name, team, bye, position, img_url)
+            session.add(player)
+        session.commit()
 
     @staticmethod
     def load_from_json(jsonfile):
@@ -112,16 +188,17 @@ class Player(Base):
             session.add(Player(**p))
         session.commit()
 
-    def __init__(self, yahoo_id, rank, name, team, bye, position):
+    def __init__(self, yahoo_id, rank, name, team, bye, position, img_url):
         self.yahoo_id = yahoo_id
         self.rank = rank
         self.name = name
         self.team = team
         self.bye = bye
         self.position = position
+        self.img_url = img_url
 
     def __repr__(self):
-        return "<Player({0},{1},'{2}','{3}',{4},'{5}')>".format(self.yahoo_id, self.rank, self.name, self.team, self.bye, self.position)
+        return "<Player({0},{1},'{2}','{3}',{4},'{5}','{6}')>".format(self.yahoo_id, self.rank, self.name, self.team, self.bye, self.position, self.img_url)
 
 class DraftedPlayer(Base):
     __tablename__ = 'drafted_players'
@@ -141,6 +218,11 @@ class DraftedPlayer(Base):
 
     def __repr__(self):
         return "<DraftedPlayer({0},{1},{2})>".format(self.player, self.team, self.round)
+
+    def change_round(self, rnd):
+        self.round = rnd
+        session.add(self)
+        session.commit()
 
 ### Qt Model/View models ###
 
@@ -176,10 +258,9 @@ class LeagueModel(QtCore.QAbstractListModel):
         self.endInsertRows()
 
 class TeamModel(QtCore.QAbstractListModel):
-    def __init__(self, parent=None):
+    def __init__(self, league_name, parent=None):
         QtCore.QAbstractListModel.__init__(self, parent)
-        #self.league = session.query(League).filter_by(name=league_name).first()
-        self.league = session.query(League).order_by(League.id).first()
+        self.league = session.query(League).filter_by(name=league_name).one()
 
     def rowCount(self, parent=QtCore.QModelIndex()):
         if parent.isValid():
@@ -189,7 +270,7 @@ class TeamModel(QtCore.QAbstractListModel):
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if not index.isValid() or role != QtCore.Qt.DisplayRole:
             return QtCore.QVariant()
-        team = session.query(Team).filter_by(order=index.row()).first()
+        team = session.query(Team).filter_by(league_id=self.league.id, order=index.row()).one()
         return QtCore.QVariant('{0} ({1})'.format(team.name, team.manager))
 
     def removeRows(self, row, count, parent=QtCore.QModelIndex()):
@@ -214,21 +295,23 @@ class TeamModel(QtCore.QAbstractListModel):
         t2 = session.query(Team).filter_by(order=row-1).first()
         t1.order = row-1
         t2.order = row
-        session.add_all(t1, t2)
+        session.add(t1)
+        session.add(t2)
         session.commit()
-        self.dataChanged()
+        self.dataChanged.emit(self.index(row-1,0), self.index(row,0))
 
     def move_down(self, row):
         t1 = session.query(Team).filter_by(order=row).first()
         t2 = session.query(Team).filter_by(order=row+1).first()
         t1.order = row+1
         t2.order = row
-        session.add_all(t1, t2)
+        session.add(t1)
+        session.add(t2)
         session.commit()
-        self.dataChanged()
+        self.dataChanged.emit(self.index(row,0), self.index(row+1,0))
 
     def team_names(self):
-        return [ team.name for team in self.league.teams ]
+        return [ row.name for row in session.query(Team).filter_by(league_id=self.league.id).order_by(Team.order).all() ]
 
 class PlayerModel(QtCore.QAbstractTableModel):
     def __init__(self, parent=None):
@@ -364,15 +447,4 @@ class PlayerFilterProxyModel(QtGui.QSortFilterProxyModel):
     def remove_draft(self, player):
         self.drafted.remove(player.id)
         self.invalidate()
-
-# Test code
-if __name__ == '__main__':
-    set_database('test.db')
-    league = League('Evil')
-    team = Team(league, 'bad horse', 1)
-    player = Player(1234, 1, 'Dan Marino', 'Mia', 5, 'QB')
-    drafted = DraftedPlayer(player, team, 1)
-    session.add_all([league, team, player, drafted])
-    session.commit()
-    print(drafted)
 

@@ -28,9 +28,9 @@ class OAuthWrapper(object):
     def request(self, url):
         if not self.access_token or not self.session_handle:
             return None
-        response = None
         oauth_request = oauth.OAuthRequest.from_consumer_and_token(self.consumer, self.access_token, http_url=url)
         oauth_request.sign_request(self.signature_method, self.consumer, self.access_token)
+        response = None
         try:
             response = urllib2.urlopen(oauth_request.to_url())
         except urllib2.HTTPError as e:
@@ -43,7 +43,7 @@ class OAuthWrapper(object):
                     response = urllib2.urlopen(oauth_request.to_url())
                 except urllib2.HTTPError:
                     pass
-        return response
+        return response.read() if response else None
 
     def create_access_token(self):
         request_token = self.get_request_token()

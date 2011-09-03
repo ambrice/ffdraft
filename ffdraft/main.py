@@ -3,11 +3,13 @@
 import re
 import ffdraft.models as models
 import os
-from PyQt4 import QtCore, QtGui, QtWebKit
+from PyQt4 import QtCore, QtGui
 from ffdraft.ui import Ui_MainWidget
 from ffdraft.utils import EggTimer
 from ffdraft.dialogs import TeamDialog, AddPlayerDialog, WebAuthDialog
 from ffdraft.yahoo.auth import OAuthWrapper
+
+YAHOO_URL = 'http://fantasysports.yahooapis.com/fantasy/v2'
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, dbfile=None):
@@ -30,9 +32,13 @@ class MainWindow(QtGui.QMainWindow):
         self.openAct.setStatusTip('Open a previous Fantasy Football Draft session')
         self.openAct.triggered.connect(self.opendb)
 
+        self.leagueAct = QtGui.QAction('&Select League', self)
+        self.leagueAct.setStatusTip('Select from multiple leagues')
+        self.leagueAct.triggered.connect(self.switch_league)
+
         self.yahooAct = QtGui.QAction('&Import From Yahoo', self)
         self.yahooAct.setStatusTip('Import League information from Yahoo')
-        self.yahooAct.triggered.connect(self.yahoo)
+        self.yahooAct.triggered.connect(self.import_from_yahoo)
 
         self.exportAct = QtGui.QAction('&Export', self)
         self.exportAct.setStatusTip('Export draft results to a text file')
@@ -77,6 +83,7 @@ class MainWindow(QtGui.QMainWindow):
         self.fileMenu.addAction(self.newAct)
         self.fileMenu.addAction(self.openAct)
         self.fileMenu.addAction(self.yahooAct)
+        self.fileMenu.addAction(self.leagueAct)
         self.fileMenu.addAction(self.exportAct)
         self.fileMenu.addSeparator()
         self.fileMenu.addAction(self.exitAct)
@@ -121,7 +128,10 @@ class MainWindow(QtGui.QMainWindow):
     def opendb(self):
         self.mainWidget.opendb()
 
-    def yahoo(self):
+    def switch_league(self):
+        self.mainWidget.switch_league()
+
+    def import_from_yahoo(self):
         self.mainWidget.import_from_yahoo()
 
     def export(self):
@@ -207,11 +217,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.load_avail(filename)
 
     def edit_teams(self):
-        dlg = TeamDialog(self.team_list, self.timer.countdown, self.league.autopick)
+        dlg = TeamDialog(self.league.name, self.team_list, self.timer.countdown, self.league.autopick)
         if (dlg.exec_() == QtGui.QDialog.Accepted):
             self.league.time_limit = dlg.get_time_limit()
             self.league.autopick = dlg.get_autopick()
-            self.save()
             self.timer.set_countdown(self.league.time_limit)
             old_team_list = self.team_list[:]
             self.team_list = dlg.get_team_list()
@@ -350,7 +359,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
     def remove_pick_list(self, name, position, team):
         prev = '%s (%s) -- %s' % (name, position, team)
-        for i in reversed(range(self.previous_picks_list.count())):
+        for i in reversed(xrange(self.previous_picks_list.count())):
             if self.previous_picks_list.item(i).text() == prev:
                 self.previous_picks_list.takeItem(i)
 
@@ -429,13 +438,13 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             return
         f = open(export_file, 'w')
         # Loop through the draft view and write all the drafted players
-        for i in range(self.drafted_view.count()):
+        for i in xrange(self.drafted_view.count()):
             team = self.get_team(i)
             list = self.drafted_view.widget(i)
             f.write(str(team) + '\n')
             f.write('-' * len(str(team)))
             f.write('\n')
-            players = [ list.item(i).text() for i in range(list.count()) ]
+            players = [ list.item(i).text() for i in xrange(list.count()) ]
             for player in players:
                 f.write(str(player) + '\n')
             f.write('\n\n')
@@ -467,24 +476,37 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             self.avail_view.resizeColumnsToContents()
 
     def import_from_yahoo(self):
-        if models.YahooAuth.total_count() == 0:
-            request_token = self.yahoo.get_request_token()
-            dlg = WebAuthDialog(request_token.get_callback_url())
-            if (dlg.exec_() != QtGui.QDialog.Accepted):
-                return
-            verification = dlg.verification_edit.text()
-            self.yahoo.access_token, self.yahoo.session_handle = self.yahoo.get_access_token(request_token, verification)
-            auth = models.YahooAuth(self.yahoo.access_token.key, self.yahoo.access_token.secret, self.yahoo.session_handle)
-            auth.save()
+        self.get_access_token()
+        progress = QtGui.QProgressDialog('Importing data from Yahoo!...', QtCore.QString(), 0, 34)
+        progress.setWindowModality(QtCore.Qt.WindowModal)
+        progress.setValue(0)
+        url = '{0}/users;use_login=1/games;game_keys=nfl/leagues'.format(YAHOO_URL)
+        leaguesxml = self.yahoo.request(url)
+        progress.setValue(1)
+        leagues = models.League.load_from_xml(leaguesxml)
+        # TODO: handle 0 or 1 leagues
+        league_names = [ league.name for league in leagues ]
+        league_name, accepted = QtGui.QInputDialog.getItem( self, 'Select League', 'Leagues', league_names, 0, False)
+        if accepted:
+            self.league = models.League.find_by_name(league_name)
         else:
-            auth = models.YahooAuth.first()
-            self.yahoo = OAuthWrapper(auth.access_token_key, auth.access_token_secret, auth.session_handle)
-        response = self.yahoo.request('http://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl/leagues')
-        print response.read()
+            self.league = leagues[0]
+        for league in leagues:
+            url = '{0}/league/nfl.l.{1}/teams'.format(YAHOO_URL, league.yahoo_id)
+            teamsxml = self.yahoo.request(url)
+            models.Team.load_from_xml(teamsxml)
+        progress.setValue(2)
+        models.Player.clear()
+        for start in xrange(0,800,25):
+            progress.setValue(progress.value() + 1)
+            url = '{0}/league/nfl.l.{1}/players;sort=OR;count=25;start={2}/'.format(YAHOO_URL, self.league.yahoo_id, start)
+            playersxml = self.yahoo.request(url)
+            models.Player.append_from_xml(playersxml, start)
+        self.init_league()
 
     def init_league(self):
         self.timer.set_countdown(self.league.time_limit)
-        team_model = models.TeamModel()
+        team_model = models.TeamModel(self.league.name)
         self.team_list = team_model.team_names()
 
         self.drafted_model = {}
@@ -500,10 +522,30 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.next_field.setText(self.get_team(self.next_draft_idx()))
         self.previous_picks_list.clear()
 
+    def switch_league(self):
+        league_names = models.League.names()
+        league_name, accepted = QtGui.QInputDialog.getItem( self, 'Select League', 'Leagues', league_names, 0, False)
+        if accepted:
+            self.league = models.League.find_by_name(league_name)
+            self.init_league()
+
+    def get_access_token(self):
+        if models.YahooAuth.total_count() == 0:
+            request_token = self.yahoo.get_request_token()
+            dlg = WebAuthDialog(request_token.get_callback_url())
+            if (dlg.exec_() != QtGui.QDialog.Accepted):
+                return
+            verification = dlg.verification_edit.text()
+            self.yahoo.access_token, self.yahoo.session_handle = self.yahoo.get_access_token(request_token, verification)
+            auth = models.YahooAuth(self.yahoo.access_token.key, self.yahoo.access_token.secret, self.yahoo.session_handle)
+            auth.save()
+        else:
+            auth = models.YahooAuth.first()
+            self.yahoo = OAuthWrapper(auth.access_token_key, auth.access_token_secret, auth.session_handle)
+
     def update_access_token(self, key, secret, handle):
         auth = models.YahooAuth.first()
         auth.access_token_key = key
         auth.access_token_secret = secret
         auth.session_handle = handle
         auth.save()
-

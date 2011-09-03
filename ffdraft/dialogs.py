@@ -5,13 +5,12 @@ from PyQt4 import QtCore, QtGui
 from ffdraft.ui import Ui_TeamDialog, Ui_AddPlayerDialog, Ui_WebAuthDialog
 
 class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
-    def __init__(self, team_list = [], timer = 0, autopick = False, parent = None):
+    def __init__(self, league_name, team_list = [], timer = 0, autopick = False, parent = None):
         QtGui.QDialog.__init__(self, parent)
 
         self.setupUi(self)
 
-        #TODO: pass league to TeamModel()
-        self.model = models.TeamModel()
+        self.model = models.TeamModel(league_name)
         self.team_list_view.setModel(self.model)
 
         self.add_button.clicked.connect(self.add_team)
@@ -41,7 +40,7 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
             # Already at bottom of list
             return
         self.model.move_down(row)
-        self.team_list_view.selectionModel().select(row + 1, QtGui.QItemSelectionModel.ClearAndSelect)
+        self.team_list_view.selectionModel().select(self.model.index(row + 1, 0), QtGui.QItemSelectionModel.ClearAndSelect)
 
     def move_team_up(self):
         row = self.team_list_view.selectedIndexes().pop(0).row()
@@ -49,7 +48,7 @@ class TeamDialog(QtGui.QDialog, Ui_TeamDialog):
             # Already at top of list
             return
         self.model.move_up(row)
-        self.team_list_view.selectionModel().select(row - 1, QtGui.QItemSelectionModel.ClearAndSelect)
+        self.team_list_view.selectionModel().select(self.model.index(row - 1, 0), QtGui.QItemSelectionModel.ClearAndSelect)
 
     def get_team_list(self):
         return self.model.team_names()
