@@ -7,6 +7,10 @@ QHeaderView::section {
     border: 1px solid #6c6c6c;
 }
 
+QTableWidget {
+    font: 20px;
+}
+
 QTableView {
     font: 20px;
 }

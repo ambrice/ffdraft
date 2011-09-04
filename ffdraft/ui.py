@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui_addplayerdialog.ui'
+# Form implementation generated from reading ui file 'ui/ui_addplayerdialog.ui'
 #
-# Created: Thu Sep  1 08:52:32 2011
+# Created: Sat Sep  3 17:19:34 2011
 #      by: PyQt4 UI code generator 4.8.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -53,9 +53,9 @@ class Ui_AddPlayerDialog(object):
 
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui_mainwidget.ui'
+# Form implementation generated from reading ui file 'ui/ui_mainwidget.ui'
 #
-# Created: Thu Sep  1 08:52:32 2011
+# Created: Sat Sep  3 17:19:34 2011
 #      by: PyQt4 UI code generator 4.8.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -72,8 +72,47 @@ class Ui_MainWidget(object):
         MainWidget.setObjectName(_fromUtf8("MainWidget"))
         MainWidget.resize(1093, 600)
         MainWidget.setWindowTitle(QtGui.QApplication.translate("MainWidget", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.horizontalLayout_2 = QtGui.QHBoxLayout(MainWidget)
+        self.horizontalLayout_3 = QtGui.QHBoxLayout(MainWidget)
+        self.horizontalLayout_3.setObjectName(_fromUtf8("horizontalLayout_3"))
+        self.verticalLayout_2 = QtGui.QVBoxLayout()
+        self.verticalLayout_2.setObjectName(_fromUtf8("verticalLayout_2"))
+        spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.verticalLayout_2.addItem(spacerItem)
+        self.horizontalLayout_2 = QtGui.QHBoxLayout()
         self.horizontalLayout_2.setObjectName(_fromUtf8("horizontalLayout_2"))
+        spacerItem1 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_2.addItem(spacerItem1)
+        self.player_image_view = QtGui.QLabel(MainWidget)
+        self.player_image_view.setMinimumSize(QtCore.QSize(165, 215))
+        self.player_image_view.setText(_fromUtf8(""))
+        self.player_image_view.setObjectName(_fromUtf8("player_image_view"))
+        self.horizontalLayout_2.addWidget(self.player_image_view)
+        spacerItem2 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_2.addItem(spacerItem2)
+        self.verticalLayout_2.addLayout(self.horizontalLayout_2)
+        self.label_4 = QtGui.QLabel(MainWidget)
+        self.label_4.setText(QtGui.QApplication.translate("MainWidget", "2010 Statistics:", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_4.setObjectName(_fromUtf8("label_4"))
+        self.verticalLayout_2.addWidget(self.label_4)
+        self.player_stats_table = QtGui.QTableWidget(MainWidget)
+        self.player_stats_table.setAlternatingRowColors(True)
+        self.player_stats_table.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+        self.player_stats_table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.player_stats_table.setShowGrid(False)
+        self.player_stats_table.setGridStyle(QtCore.Qt.NoPen)
+        self.player_stats_table.setObjectName(_fromUtf8("player_stats_table"))
+        self.player_stats_table.setColumnCount(0)
+        self.player_stats_table.setRowCount(0)
+        self.player_stats_table.verticalHeader().setVisible(False)
+        self.verticalLayout_2.addWidget(self.player_stats_table)
+        spacerItem3 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.verticalLayout_2.addItem(spacerItem3)
+        self.horizontalLayout_3.addLayout(self.verticalLayout_2)
+        self.line_2 = QtGui.QFrame(MainWidget)
+        self.line_2.setFrameShape(QtGui.QFrame.VLine)
+        self.line_2.setFrameShadow(QtGui.QFrame.Sunken)
+        self.line_2.setObjectName(_fromUtf8("line_2"))
+        self.horizontalLayout_3.addWidget(self.line_2)
         self.splitter = QtGui.QSplitter(MainWidget)
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
         self.splitter.setObjectName(_fromUtf8("splitter"))
@@ -246,7 +285,7 @@ class Ui_MainWidget(object):
         self.verticalLayout.addLayout(self.vboxlayout2)
         self.drafted_view = QtGui.QToolBox(self.splitter)
         self.drafted_view.setObjectName(_fromUtf8("drafted_view"))
-        self.horizontalLayout_2.addWidget(self.splitter)
+        self.horizontalLayout_3.addWidget(self.splitter)
 
         self.retranslateUi(MainWidget)
         self.drafted_view.setCurrentIndex(-1)
@@ -257,9 +296,9 @@ class Ui_MainWidget(object):
 
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui_teamdialog.ui'
+# Form implementation generated from reading ui file 'ui/ui_teamdialog.ui'
 #
-# Created: Thu Sep  1 08:52:33 2011
+# Created: Sat Sep  3 17:19:34 2011
 #      by: PyQt4 UI code generator 4.8.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -380,9 +419,9 @@ class Ui_TeamDialog(object):
 
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui_webauth.ui'
+# Form implementation generated from reading ui file 'ui/ui_webauth.ui'
 #
-# Created: Thu Sep  1 08:52:33 2011
+# Created: Sat Sep  3 17:19:34 2011
 #      by: PyQt4 UI code generator 4.8.5
 #
 # WARNING! All changes made in this file will be lost!

@@ -3,6 +3,9 @@
 import re
 import ffdraft.models as models
 import os
+import httplib
+from xml.etree import ElementTree
+from urlparse import urlparse
 from PyQt4 import QtCore, QtGui
 from ffdraft.ui import Ui_MainWidget
 from ffdraft.utils import EggTimer
@@ -163,6 +166,8 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         self.setupUi(self)
 
+        self.stat_categories = None
+
         self.drafted_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.avail_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.avail_view.verticalHeader().hide()
@@ -186,7 +191,6 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.tab_bar.addTab('DEF')
         self.vboxlayout2.insertWidget(0, self.tab_bar)
 
-
         self.avail_view.doubleClicked.connect(self.draft_player)
         self.tab_bar.currentChanged.connect(self.filter_avail)
 
@@ -201,6 +205,10 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         # Yahoo OAuth stuff
         self.yahoo = OAuthWrapper()
         self.yahoo.add_token_update_callback(self.update_access_token)
+
+        self.player_stats_table.setColumnCount(2)
+        self.player_stats_table.verticalHeader().hide()
+        self.player_stats_table.horizontalHeader().hide()
 
     def pause_timer(self):
         if self.pause_button.text() == 'Start':
@@ -457,7 +465,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 os.remove(dbfile)
             except OSError:
                 pass
-            models.set_database(dbfile)
+            self.opendb(dbfile)
 
     def opendb(self, loadfile=None):
         if not loadfile:
@@ -471,6 +479,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             self.filtered_model = models.PlayerFilterProxyModel()
             self.filtered_model.setSourceModel(self.avail_model)
             self.avail_view.setModel(self.filtered_model)
+            self.avail_view.selectionModel().currentRowChanged.connect(self.update_stats)
             self.avail_view.hideColumn(0)
             self.avail_view.hideColumn(1)
             self.avail_view.resizeColumnsToContents()
@@ -549,3 +558,47 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         auth.access_token_secret = secret
         auth.session_handle = handle
         auth.save()
+
+    def update_stats(self, index):
+        if not self.stat_categories:
+            self.get_stat_categories()
+        player = self.filtered_model[index.row()]
+        url = urlparse(player.img_url)
+        connection = httplib.HTTPConnection(url.netloc)
+        connection.request('GET', url.path)
+        response = connection.getresponse().read()
+        self.player_image = QtGui.QPixmap()
+        self.player_image.loadFromData(response)
+        self.player_image_view.setPixmap(self.player_image)
+        # TODO 242 is the game_key for the 2010 season, need to get that programatically
+        url = '{0}/player/242.p.{1}/stats'.format(YAHOO_URL, player.yahoo_id)
+        statsxml = self.yahoo.request(url)
+        root = ElementTree.fromstring(statsxml)
+        models.remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
+        stats = []
+        for stat in root.findall('player/player_stats/stats/stat'):
+            stat_id = stat.findtext('stat_id')
+            stat_value = stat.findtext('value')
+            if int(stat_value) != 0:
+                stats.append( (stat_id, stat_value) )
+        self.player_stats_table.clear()
+        self.player_stats_table.setRowCount(len(stats))
+        for row, stat in enumerate(stats):
+            item = QtGui.QTableWidgetItem(self.stat_categories[stat[0]])
+            self.player_stats_table.setItem(row, 0, item)
+            item = QtGui.QTableWidgetItem(stat[1])
+            self.player_stats_table.setItem(row, 1, item)
+        self.player_stats_table.resizeColumnsToContents()
+
+    def get_stat_categories(self):
+        self.get_access_token()
+        # TODO 242 is the game_key for the 2010 season, need to get that programatically
+        url = '{0}/game/242/stat_categories'.format(YAHOO_URL)
+        statsxml = self.yahoo.request(url)
+        root = ElementTree.fromstring(statsxml)
+        models.remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
+        self.stat_categories = {}
+        for stat in root.findall('game/stat_categories/stats/stat'):
+            stat_id = stat.findtext('stat_id')
+            stat_name = stat.findtext('name')
+            self.stat_categories[stat_id] = stat_name
