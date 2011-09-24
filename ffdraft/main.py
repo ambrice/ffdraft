@@ -3,9 +3,7 @@
 import re
 import ffdraft.models as models
 import os
-import httplib
 from xml.etree import ElementTree
-from urlparse import urlparse
 from PyQt4 import QtCore, QtGui
 from ffdraft.ui import Ui_MainWidget
 from ffdraft.utils import EggTimer
@@ -29,23 +27,23 @@ class MainWindow(QtGui.QMainWindow):
     def createActions(self):
         self.newAct = QtGui.QAction('&New Session', self)
         self.newAct.setStatusTip('Start a New Fantasy Football Draft session')
-        self.newAct.triggered.connect(self.newdb)
+        self.newAct.triggered.connect(self.mainWidget.newdb)
 
         self.openAct = QtGui.QAction('&Open Session', self)
         self.openAct.setStatusTip('Open a previous Fantasy Football Draft session')
-        self.openAct.triggered.connect(self.opendb)
+        self.openAct.triggered.connect(self.mainWidget.opendb)
 
         self.leagueAct = QtGui.QAction('&Select League', self)
         self.leagueAct.setStatusTip('Select from multiple leagues')
-        self.leagueAct.triggered.connect(self.switch_league)
+        self.leagueAct.triggered.connect(self.mainWidget.switch_league)
 
         self.yahooAct = QtGui.QAction('&Import From Yahoo', self)
         self.yahooAct.setStatusTip('Import League information from Yahoo')
-        self.yahooAct.triggered.connect(self.import_from_yahoo)
+        self.yahooAct.triggered.connect(self.mainWidget.import_from_yahoo)
 
         self.exportAct = QtGui.QAction('&Export', self)
         self.exportAct.setStatusTip('Export draft results to a text file')
-        self.exportAct.triggered.connect(self.export)
+        self.exportAct.triggered.connect(self.mainWidget.export)
 
         self.exitAct = QtGui.QAction('E&xit', self)
         self.exitAct.setShortcut('Ctrl+Q')
@@ -54,7 +52,7 @@ class MainWindow(QtGui.QMainWindow):
 
         self.teamAct = QtGui.QAction('&Configure Teams', self)
         self.teamAct.setStatusTip('Add/Remove teams from the draft')
-        self.teamAct.triggered.connect(self.edit_teams)
+        self.teamAct.triggered.connect(self.mainWidget.edit_teams)
 
         self.keeperAct = QtGui.QAction('&Add Keeper', self)
         self.keeperAct.setStatusTip('Add a player as a keeper from a keeper league')
@@ -62,15 +60,15 @@ class MainWindow(QtGui.QMainWindow):
         
         self.extraAct = QtGui.QAction('&Add Extra Player', self)
         self.extraAct.setStatusTip('Add an extra player to a team, outside of the draft')
-        self.extraAct.triggered.connect(self.extra_player)
+        self.extraAct.triggered.connect(self.mainWidget.extra_player)
 
         self.removeAct = QtGui.QAction('&Remove Player', self)
         self.removeAct.setStatusTip('Remove a player from a team')
-        self.removeAct.triggered.connect(self.remove_player)
+        self.removeAct.triggered.connect(self.mainWidget.remove_player)
 
         self.draftAct = QtGui.QAction('&Draft Unlisted Player', self)
         self.draftAct.setStatusTip('Draft a player not listed in the available player table')
-        self.draftAct.triggered.connect(self.draft_unlisted_player)
+        self.draftAct.triggered.connect(self.mainWidget.draft_unlisted_player)
 
         self.aboutAct = QtGui.QAction('About FFD', self)
         self.aboutAct.setStatusTip('About Fantasy Football Draft')
@@ -122,35 +120,8 @@ class MainWindow(QtGui.QMainWindow):
     def showDraftedMenu(self, point):
         self.draftedPopupMenu.exec_(QtGui.QCursor.pos())
 
-    def edit_teams(self):
-        self.mainWidget.edit_teams()
-
-    def newdb(self):
-        self.mainWidget.newdb()
-
-    def opendb(self):
-        self.mainWidget.opendb()
-
-    def switch_league(self):
-        self.mainWidget.switch_league()
-
-    def import_from_yahoo(self):
-        self.mainWidget.import_from_yahoo()
-
-    def export(self):
-        self.mainWidget.export()
-
-    def extra_player(self):
-        self.mainWidget.extra_player()
-
     def add_keeper(self):
         self.mainWidget.extra_player(keeper=True)
-
-    def remove_player(self):
-        self.mainWidget.remove_player()
-
-    def draft_unlisted_player(self):
-        self.mainWidget.draft_unlisted_player()
 
     def about(self):
         QtGui.QMessageBox.about(self, 'About Fantasy Football Draft',
@@ -201,6 +172,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.league = models.League('Unnamed')
         if dbfile:
             self.opendb(dbfile)
+            self.init_league()
 
         # Yahoo OAuth stuff
         self.yahoo = OAuthWrapper()
@@ -209,6 +181,9 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.player_stats_table.setColumnCount(2)
         self.player_stats_table.verticalHeader().hide()
         self.player_stats_table.horizontalHeader().hide()
+
+        self.player_image = {}
+        self.player_stats = {}
 
     def pause_timer(self):
         if self.pause_button.text() == 'Start':
@@ -465,6 +440,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 os.remove(dbfile)
             except OSError:
                 pass
+            open(dbfile, 'w').close()
             self.opendb(dbfile)
 
     def opendb(self, loadfile=None):
@@ -473,8 +449,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         if loadfile != '' and os.access(loadfile, os.R_OK|os.W_OK):
             models.set_database(loadfile)
             if models.League.total_count() > 0:
-                # TODO: pick league
-                self.league = models.session.query(models.League).first()
+                self.league = models.League.active_league()
             self.avail_model = models.PlayerModel()
             self.filtered_model = models.PlayerFilterProxyModel()
             self.filtered_model.setSourceModel(self.avail_model)
@@ -486,31 +461,44 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
     def import_from_yahoo(self):
         self.get_access_token()
-        progress = QtGui.QProgressDialog('Importing data from Yahoo!...', QtCore.QString(), 0, 34)
-        progress.setWindowModality(QtCore.Qt.WindowModal)
-        progress.setValue(0)
+        self.progress = QtGui.QProgressDialog('Importing data from Yahoo!...', QtCore.QString(), 0, 34)
+        self.progress.setWindowModality(QtCore.Qt.WindowModal)
+        self.progress.setValue(0)
         url = '{0}/users;use_login=1/games;game_keys=nfl/leagues'.format(YAHOO_URL)
+        self.progress.setValue(1)
         leaguesxml = self.yahoo.request(url)
-        progress.setValue(1)
+        self.update_leagues(leaguesxml)
+
+    def update_leagues(self, leaguesxml):
         leagues = models.League.load_from_xml(leaguesxml)
         # TODO: handle 0 or 1 leagues
         league_names = [ league.name for league in leagues ]
         league_name, accepted = QtGui.QInputDialog.getItem( self, 'Select League', 'Leagues', league_names, 0, False)
         if accepted:
             self.league = models.League.find_by_name(league_name)
+            self.league.activate()
         else:
             self.league = leagues[0]
+            self.league.activate()
         for league in leagues:
             url = '{0}/league/nfl.l.{1}/teams'.format(YAHOO_URL, league.yahoo_id)
+            self.progress.setValue(2)
             teamsxml = self.yahoo.request(url)
             models.Team.load_from_xml(teamsxml)
-        progress.setValue(2)
         models.Player.clear()
         for start in xrange(0,800,25):
-            progress.setValue(progress.value() + 1)
+            self.progress.setValue(self.progress.value() + 1)
             url = '{0}/league/nfl.l.{1}/players;sort=OR;count=25;start={2}/'.format(YAHOO_URL, self.league.yahoo_id, start)
             playersxml = self.yahoo.request(url)
             models.Player.append_from_xml(playersxml, start)
+        self.avail_model = models.PlayerModel()
+        self.filtered_model = models.PlayerFilterProxyModel()
+        self.filtered_model.setSourceModel(self.avail_model)
+        self.avail_view.setModel(self.filtered_model)
+        self.avail_view.selectionModel().currentRowChanged.connect(self.update_stats)
+        self.avail_view.hideColumn(0)
+        self.avail_view.hideColumn(1)
+        self.avail_view.resizeColumnsToContents()
         self.init_league()
 
     def init_league(self):
@@ -536,6 +524,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         league_name, accepted = QtGui.QInputDialog.getItem( self, 'Select League', 'Leagues', league_names, 0, False)
         if accepted:
             self.league = models.League.find_by_name(league_name)
+            self.league.activate()
             self.init_league()
 
     def get_access_token(self):
@@ -545,45 +534,72 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             if (dlg.exec_() != QtGui.QDialog.Accepted):
                 return
             verification = dlg.verification_edit.text()
-            self.yahoo.access_token, self.yahoo.session_handle = self.yahoo.get_access_token(request_token, verification)
-            auth = models.YahooAuth(self.yahoo.access_token.key, self.yahoo.access_token.secret, self.yahoo.session_handle)
+            self.yahoo.access_token, self.yahoo.session_handle, self.yahoo.access_expires  = self.yahoo.get_access_token(request_token, verification)
+            auth = models.YahooAuth(self.yahoo.access_token.key, self.yahoo.access_token.secret, self.yahoo.session_handle, self.yahoo.access_expires)
             auth.save()
         else:
             auth = models.YahooAuth.first()
-            self.yahoo = OAuthWrapper(auth.access_token_key, auth.access_token_secret, auth.session_handle)
+            self.yahoo.set_access(auth.access_token_key, auth.access_token_secret, auth.session_handle, auth.access_expires)
 
-    def update_access_token(self, key, secret, handle):
+    def update_access_token(self, key, secret, handle, expires):
         auth = models.YahooAuth.first()
         auth.access_token_key = key
         auth.access_token_secret = secret
         auth.session_handle = handle
+        auth.access_expires = expires
         auth.save()
 
     def update_stats(self, index):
         if not self.stat_categories:
             self.get_stat_categories()
         player = self.filtered_model[index.row()]
-        url = urlparse(player.img_url)
-        connection = httplib.HTTPConnection(url.netloc)
-        connection.request('GET', url.path)
-        response = connection.getresponse().read()
-        self.player_image = QtGui.QPixmap()
-        self.player_image.loadFromData(response)
-        self.player_image_view.setPixmap(self.player_image)
-        # TODO 242 is the game_key for the 2010 season, need to get that programatically
-        url = '{0}/player/242.p.{1}/stats'.format(YAHOO_URL, player.yahoo_id)
-        statsxml = self.yahoo.request(url)
+        if self.player_image.has_key(player.id) and self.player_stats.has_key(player.id):
+            self.show_player_data(player)
+        if not self.player_image.has_key(player.id):
+            q = player.img_url.find('?')
+            if q != -1:
+                url = player.img_url[0:q]
+            else:
+                url = player.img_url
+            self.yahoo.request_async(url, lambda x: self.read_image(player, x), skip_auth=True)
+        if not self.player_stats.has_key(player.id):
+            # TODO 242 is the game_key for the 2010 season, need to get that programatically
+            url = '{0}/player/242.p.{1}/stats'.format(YAHOO_URL, player.yahoo_id)
+            self.yahoo.request_async(url, lambda x: self.read_stats(player, x))
+
+    def read_image(self, player, image):
+        try:
+            self.player_image[player.id] = QtGui.QPixmap()
+            self.player_image[player.id].loadFromData(image)
+            if self.player_stats.has_key(player.id):
+                self.show_player_data(player)
+        except Exception as e:
+            print 'Error reading image ' + str(e)
+            del self.player_image[player.id]
+
+    def read_stats(self, player, statsxml):
+        statsxml = str(statsxml)
         root = ElementTree.fromstring(statsxml)
         models.remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
-        stats = []
-        for stat in root.findall('player/player_stats/stats/stat'):
-            stat_id = stat.findtext('stat_id')
-            stat_value = stat.findtext('value')
-            if int(stat_value) != 0:
-                stats.append( (stat_id, stat_value) )
+        self.player_stats[player.id] = []
+        try:
+            for stat in root.findall('player/player_stats/stats/stat'):
+                stat_id = stat.findtext('stat_id')
+                stat_value = stat.findtext('value')
+                if int(stat_value) != 0:
+                    self.player_stats[player.id].append( (stat_id, stat_value) )
+            if self.player_image.has_key(player.id):
+                self.show_player_data(player)
+        except Exception as e:
+            print 'Error reading stats ' + str(e)
+            del self.player_stats[player.id]
+
+
+    def show_player_data(self, player):
+        self.player_image_view.setPixmap(self.player_image[player.id])
         self.player_stats_table.clear()
-        self.player_stats_table.setRowCount(len(stats))
-        for row, stat in enumerate(stats):
+        self.player_stats_table.setRowCount(len(self.player_stats[player.id]))
+        for row, stat in enumerate(self.player_stats[player.id]):
             item = QtGui.QTableWidgetItem(self.stat_categories[stat[0]])
             self.player_stats_table.setItem(row, 0, item)
             item = QtGui.QTableWidgetItem(stat[1])
@@ -595,6 +611,9 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         # TODO 242 is the game_key for the 2010 season, need to get that programatically
         url = '{0}/game/242/stat_categories'.format(YAHOO_URL)
         statsxml = self.yahoo.request(url)
+        self.read_stat_categories(statsxml)
+
+    def read_stat_categories(self, statsxml):
         root = ElementTree.fromstring(statsxml)
         models.remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
         self.stat_categories = {}

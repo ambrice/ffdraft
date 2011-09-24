@@ -4,7 +4,7 @@ from xml.etree import ElementTree
 
 from PyQt4 import QtCore, QtGui
 
-from sqlalchemy import func, create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy import func, create_engine, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
@@ -36,6 +36,7 @@ class YahooAuth(Base):
     id = Column(Integer, primary_key=True)
     access_token_key = Column(String)
     access_token_secret = Column(String)
+    access_expires = Column(Integer)
     session_handle = Column(String)
 
     @staticmethod
@@ -46,9 +47,10 @@ class YahooAuth(Base):
     def first():
         return session.query(YahooAuth).order_by(YahooAuth.id).first()
 
-    def __init__(self, key, secret, session_handle):
+    def __init__(self, key, secret, session_handle, expires):
         self.access_token_key = key
         self.access_token_secret = secret
+        self.access_expires = expires
         self.session_handle = session_handle
 
     def save(self):
@@ -65,6 +67,7 @@ class League(Base):
     current_draft_index = Column(Integer)
     time_limit = Column(Integer)
     autopick = Column(Integer)
+    active = Column(Boolean)
 
     @staticmethod
     def total_count():
@@ -77,6 +80,10 @@ class League(Base):
     @staticmethod
     def find_by_name(name):
         return session.query(League).filter_by(name=str(name)).one()
+
+    @staticmethod
+    def active_league():
+        return session.query(League).filter_by(active=True).one()
 
     @staticmethod
     def load_from_xml(xml):
@@ -100,11 +107,21 @@ class League(Base):
         self.current_draft_index = 0
         self.time_limit = 120
         self.autopick = 1
+        self.active = False
 
     def __repr__(self):
         return "<League('{0}')>".format(self.name)
 
     def save(self):
+        session.add(self)
+        session.commit()
+
+    def activate(self):
+        actives = session.query(League).filter_by(active=True).all()
+        for current in actives:
+            current.active = False
+            session.add(current)
+        self.active = True
         session.add(self)
         session.commit()
 
