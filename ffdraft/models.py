@@ -134,11 +134,18 @@ class Team(Base):
     name = Column(String)
     manager = Column(String)
     order = Column(Integer)
+    img_url = Column(String)
 
     league = relationship('League', backref=backref('teams', order_by=id))
 
     @staticmethod
+    def find_by_name(name):
+        current_league = League.active_league()
+        return session.query(Team).filter_by(name=str(name), league_id=current_league.id).one()
+
+    @staticmethod
     def load_from_xml(xml):
+        print(xml)
         root = ElementTree.fromstring(xml)
         remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
         league_yahoo_id = root.findtext('league/league_id')
@@ -149,21 +156,23 @@ class Team(Base):
             name = teamxml.findtext('name')
             yahoo_id = teamxml.findtext('team_id')
             manager = teamxml.findtext('managers/manager/nickname')
-            team = Team(league, name, manager, order, yahoo_id)
+            img_url = teamxml.findtext('team_logos/team_logo/url')
+            team = Team(league, name, manager, order, img_url, yahoo_id)
             session.add(team)
             teams.append(team)
         session.commit()
         return teams
 
-    def __init__(self, league, name, manager, order, yahoo_id=None):
+    def __init__(self, league, name, manager, order, img_url, yahoo_id=None):
         self.league = league
         self.name = name
         self.manager = manager
         self.order = order
+        self.img_url = img_url
         self.yahoo_id = yahoo_id
 
     def __repr__(self):
-        return "<Team({0},'{1}','{2}',{3})>".format(self.league, self.name, self.manager, self.order)
+        return "<Team({0},'{1}','{2}',{3},'{4}')>".format(self.league, self.name, self.manager, self.order, self.img_url)
 
 class Player(Base):
     __tablename__ = 'players'

@@ -61,14 +61,16 @@ class OAuthWrapper(QtCore.QObject):
     def add_token_update_callback(self, cb):
         self.token_update_callbacks.append(cb)
 
-    def request(self, url):
-        if not self.access_token or not self.session_handle:
+    def request(self, url, skip_auth=False):
+        if not skip_auth and (not self.access_token or not self.session_handle):
             raise RuntimeError('OAuth Request made without access token')
         if time.time() > self.access_expires:
             self.refresh_access_token()
-        oauth_request = oauth.OAuthRequest.from_consumer_and_token(self.consumer, self.access_token, http_url=url)
-        oauth_request.sign_request(self.signature_method, self.consumer, self.access_token)
-        response = urllib2.urlopen(oauth_request.to_url())
+        if not skip_auth:
+            oauth_request = oauth.OAuthRequest.from_consumer_and_token(self.consumer, self.access_token, http_url=url)
+            oauth_request.sign_request(self.signature_method, self.consumer, self.access_token)
+            url = oauth_request.to_url()
+        response = urllib2.urlopen(url)
         return response.read()
 
     def request_async(self, url, callback, priority=3, skip_auth=False):

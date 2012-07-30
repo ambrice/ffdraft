@@ -3,14 +3,17 @@
 import re
 import ffdraft.models as models
 import os
+import urllib2
 from xml.etree import ElementTree
 from PyQt4 import QtCore, QtGui
-from ffdraft.ui import Ui_MainWidget
-from ffdraft.utils import EggTimer
+from ffdraft.utils import EggTimer, SelectionOrder
 from ffdraft.dialogs import TeamDialog, AddPlayerDialog, WebAuthDialog
 from ffdraft.yahoo.auth import OAuthWrapper
 
 YAHOO_URL = 'http://fantasysports.yahooapis.com/fantasy/v2'
+# 257 is the id for NFL season 2011, each year have to update that from
+# http://developer.yahoo.com/fantasysports/guide/game-resource.html
+YAHOO_LAST_SEASON_ID = 257
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, dbfile=None):
@@ -131,27 +134,98 @@ class MainWindow(QtGui.QMainWindow):
                 +'See the file COPYING for details\n')
 
 
-class MainWidget(QtGui.QWidget, Ui_MainWidget):
+class MainWidget(QtGui.QWidget):
     def __init__(self, dbfile=None, parent = None):
         QtGui.QWidget.__init__(self, parent)
 
-        self.setupUi(self)
+        self.setup_ui()
 
-        self.stat_categories = None
-
-        self.drafted_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.avail_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.avail_view.verticalHeader().hide()
-        
         self.timer = EggTimer(self)
-        self.timer.update.connect(self.timerDisplay.display)
+        self.timer.update.connect(self.timer_display.display)
         self.timer.expired.connect(self.draft_best_player)
+
         self.reset_button.clicked.connect(self.timer.reset)
         self.pause_button.clicked.connect(self.pause_timer)
 
-        self.splitter.setSizes([1000, 200])
+        self.avail_view.doubleClicked.connect(self.draft_player)
+        self.tab_bar.currentChanged.connect(self.filter_avail)
 
-        # Designer doesn't have QTabBar, only QTabWidget, so I have to insert it manually
+        self.stat_categories = None
+        self.timer.set_countdown(60)
+        self.team_list = []
+        self.drafted_model = {}
+
+        self.league = models.League('Unnamed')
+
+        # Yahoo OAuth stuff
+        self.yahoo = OAuthWrapper()
+        self.yahoo.add_token_update_callback(self.update_access_token)
+
+        if dbfile:
+            self.opendb(dbfile)
+            self.init_league()
+
+        self.player_image = {}
+        self.player_stats = {}
+
+    def setup_ui(self):
+        self.timer_display = QtGui.QLCDNumber(self)
+        self.pause_button = QtGui.QPushButton('Start', self)
+        self.reset_button = QtGui.QPushButton('Reset', self)
+        self.selection_order = SelectionOrder()
+        
+        banner_layout = QtGui.QHBoxLayout()
+        banner_layout.addWidget(self.timer_display)
+        banner_layout.addWidget(self.pause_button)
+        banner_layout.addWidget(self.reset_button)
+        banner_layout.addWidget(self.selection_order)
+
+        player_widget = self.setup_player_ui()
+        avail_widget = self.setup_avail_ui()
+        drafted_widget = self.setup_drafted_ui()
+
+        splitter = QtGui.QSplitter(self)
+        splitter.setOrientation(QtCore.Qt.Horizontal)
+        splitter.addWidget(player_widget)
+        splitter.addWidget(avail_widget)
+        splitter.addWidget(drafted_widget)
+        #splitter.setSizes([200, 600, 200])
+
+        top_layout = QtGui.QVBoxLayout()
+        top_layout.addLayout(banner_layout)
+        top_layout.addWidget(splitter)
+        self.setLayout(top_layout)
+
+    def setup_player_ui(self):
+        widget = QtGui.QWidget(self)
+
+        player_label = QtGui.QLabel('Player', widget)
+        self.player_image_view = QtGui.QLabel(widget)
+        self.player_image_view.setAlignment(QtCore.Qt.AlignCenter)
+        statistics_label = QtGui.QLabel('2011 Statistics', widget)
+        self.player_stats_table = QtGui.QTableWidget(widget)
+        self.player_stats_table.setAlternatingRowColors(True)
+        self.player_stats_table.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+        self.player_stats_table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.player_stats_table.setShowGrid(False)
+        self.player_stats_table.setGridStyle(QtCore.Qt.NoPen)
+        self.player_stats_table.setRowCount(0)
+        self.player_stats_table.setColumnCount(2)
+        self.player_stats_table.verticalHeader().hide()
+        self.player_stats_table.horizontalHeader().hide()
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(player_label)
+        layout.addWidget(self.player_image_view)
+        layout.addWidget(statistics_label)
+        layout.addWidget(self.player_stats_table)
+        widget.setLayout(layout)
+
+        return widget
+
+    def setup_avail_ui(self):
+        widget = QtGui.QWidget(self)
+
         self.tab_bar = QtGui.QTabBar(self)
         self.tab_bar.addTab('All')
         self.tab_bar.addTab('RB')
@@ -160,30 +234,39 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.tab_bar.addTab('TE')
         self.tab_bar.addTab('K')
         self.tab_bar.addTab('DEF')
-        self.avail_layout.insertWidget(0, self.tab_bar)
 
-        self.avail_view.doubleClicked.connect(self.draft_player)
-        self.tab_bar.currentChanged.connect(self.filter_avail)
+        self.avail_view = QtGui.QTableView(widget)
+        self.avail_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.avail_view.verticalHeader().hide()
 
-        self.timer.set_countdown(60)
-        self.team_list = []
-        self.drafted_model = {}
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(self.tab_bar)
+        layout.addWidget(self.avail_view)
+        widget.setLayout(layout)
 
-        self.league = models.League('Unnamed')
-        if dbfile:
-            self.opendb(dbfile)
-            self.init_league()
+        return widget
 
-        # Yahoo OAuth stuff
-        self.yahoo = OAuthWrapper()
-        self.yahoo.add_token_update_callback(self.update_access_token)
+    def setup_drafted_ui(self):
+        widget = QtGui.QWidget(self)
 
-        self.player_stats_table.setColumnCount(2)
-        self.player_stats_table.verticalHeader().hide()
-        self.player_stats_table.horizontalHeader().hide()
+        self.previous_picks_list = QtGui.QListWidget(widget)
+        self.previous_picks_list.setLineWidth(3)
+        self.previous_picks_list.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+        self.previous_picks_list.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+        self.previous_picks_list.setViewMode(QtGui.QListView.ListMode)
 
-        self.player_image = {}
-        self.player_stats = {}
+        self.drafted_view = QtGui.QToolBox(widget)
+        self.drafted_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.drafted_view.setCurrentIndex(-1)
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(self.previous_picks_list)
+        layout.addWidget(self.drafted_view)
+        layout.setStretch(0, 1)
+        layout.setStretch(1, 5)
+        widget.setLayout(layout)
+
+        return widget
 
     def pause_timer(self):
         if self.pause_button.text() == 'Start':
@@ -226,9 +309,9 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.league.current_round = 1
         self.league.current_draft_index = 0
         self.league.save()
-        self.round_field.setText(str(self.league.current_round))
-        self.drafting_field.setText(self.get_team(0))
-        self.next_field.setText(self.get_team(1))
+        #self.round_field.setText(str(self.league.current_round))
+        #self.drafting_field.setText(self.get_team(0))
+        #self.next_field.setText(self.get_team(1))
         self.previous_picks_list.clear()
 
     def next_draft_idx(self):
@@ -294,9 +377,9 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
         self.league.current_draft_index = next_idx
         self.league.save()
-        self.round_field.setText(str(self.league.current_round))
-        self.drafting_field.setText(self.get_team())
-        self.next_field.setText(self.get_team(self.next_draft_idx()))
+        #self.round_field.setText(str(self.league.current_round))
+        #self.drafting_field.setText(self.get_team())
+        #self.next_field.setText(self.get_team(self.next_draft_idx()))
 
         # Make sure the current team is visible in the toolbox
         self.drafted_view.setCurrentIndex(self.league.current_draft_index)
@@ -506,6 +589,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         team_model = models.TeamModel(self.league.name)
         self.team_list = team_model.team_names()
 
+        team_icons = []
         self.drafted_model = {}
         for team in self.team_list:
             self.drafted_model[team] = models.DraftedPlayerModel(team)
@@ -513,10 +597,17 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
             tview.setModel(self.drafted_model[team])
             tview.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
             self.drafted_view.addItem(tview, team)
+            img_url = models.Team.find_by_name(team).img_url
+            image = urllib2.urlopen(img_url).read()
+            pixmap = QtGui.QPixmap()
+            pixmap.loadFromData(image)
+            #team_icons.append(QtGui.QIcon(pixmap))
+            team_icons.append(pixmap)
 
-        self.round_field.setText(str(self.league.current_round))
-        self.drafting_field.setText(self.get_team(self.league.current_draft_index))
-        self.next_field.setText(self.get_team(self.next_draft_idx()))
+        self.selection_order.set_teams(self.team_list, team_icons)
+        #self.round_field.setText(str(self.league.current_round))
+        #self.drafting_field.setText(self.get_team(self.league.current_draft_index))
+        #self.next_field.setText(self.get_team(self.next_draft_idx()))
         self.previous_picks_list.clear()
 
     def switch_league(self):
@@ -563,8 +654,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
                 url = player.img_url
             self.yahoo.request_async(url, lambda x: self.read_image(player, x), skip_auth=True)
         if not self.player_stats.has_key(player.id):
-            # TODO 257 is the game_key for the 2011 season, need to get that programatically
-            url = '{0}/player/257.p.{1}/stats'.format(YAHOO_URL, player.yahoo_id)
+            url = '{0}/player/{1}.p.{2}/stats'.format(YAHOO_URL, YAHOO_LAST_SEASON_ID, player.yahoo_id)
             self.yahoo.request_async(url, lambda x: self.read_stats(player, x))
 
     def read_image(self, player, image):
@@ -580,7 +670,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
     def read_stats(self, player, statsxml):
         statsxml = str(statsxml)
         root = ElementTree.fromstring(statsxml)
-        models.remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
+        models.remove_namespace(root, '{0}/base.rng'.format(YAHOO_URL))
         self.player_stats[player.id] = []
         try:
             for stat in root.findall('player/player_stats/stats/stat'):
@@ -608,14 +698,13 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
 
     def get_stat_categories(self):
         self.get_access_token()
-        # TODO 242 is the game_key for the 2010 season, need to get that programatically
-        url = '{0}/game/242/stat_categories'.format(YAHOO_URL)
+        url = '{0}/game/{1}/stat_categories'.format(YAHOO_URL, YAHOO_LAST_SEASON_ID)
         statsxml = self.yahoo.request(url)
         self.read_stat_categories(statsxml)
 
     def read_stat_categories(self, statsxml):
         root = ElementTree.fromstring(statsxml)
-        models.remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
+        models.remove_namespace(root, '{0}/base.rng'.format(YAHOO_URL))
         self.stat_categories = {}
         for stat in root.findall('game/stat_categories/stats/stat'):
             stat_id = stat.findtext('stat_id')
