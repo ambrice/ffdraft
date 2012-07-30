@@ -22,7 +22,7 @@ class MainWindow(QtGui.QMainWindow):
         self.createMenus()
         self.createStatusBar()
         self.setWindowTitle('Fantasy Football Draft')
-        self.version = '2011-08'
+        self.version = '2012-08'
 
     def createActions(self):
         self.newAct = QtGui.QAction('&New Session', self)
@@ -160,7 +160,7 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         self.tab_bar.addTab('TE')
         self.tab_bar.addTab('K')
         self.tab_bar.addTab('DEF')
-        self.vboxlayout2.insertWidget(0, self.tab_bar)
+        self.avail_layout.insertWidget(0, self.tab_bar)
 
         self.avail_view.doubleClicked.connect(self.draft_player)
         self.tab_bar.currentChanged.connect(self.filter_avail)
@@ -556,15 +556,15 @@ class MainWidget(QtGui.QWidget, Ui_MainWidget):
         if self.player_image.has_key(player.id) and self.player_stats.has_key(player.id):
             self.show_player_data(player)
         if not self.player_image.has_key(player.id):
-            q = player.img_url.find('?')
+            q = player.img_url.rfind('http')
             if q != -1:
-                url = player.img_url[0:q]
+                url = player.img_url[q:]
             else:
                 url = player.img_url
             self.yahoo.request_async(url, lambda x: self.read_image(player, x), skip_auth=True)
         if not self.player_stats.has_key(player.id):
-            # TODO 242 is the game_key for the 2010 season, need to get that programatically
-            url = '{0}/player/242.p.{1}/stats'.format(YAHOO_URL, player.yahoo_id)
+            # TODO 257 is the game_key for the 2011 season, need to get that programatically
+            url = '{0}/player/257.p.{1}/stats'.format(YAHOO_URL, player.yahoo_id)
             self.yahoo.request_async(url, lambda x: self.read_stats(player, x))
 
     def read_image(self, player, image):
