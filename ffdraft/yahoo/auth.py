@@ -27,10 +27,9 @@ class RequestThread(QtCore.QThread):
             (priority, request_id, url) = queue.get()
             try:
                 response = urllib2.urlopen(url)
+                self.response_available.emit(request_id, QtCore.QByteArray(response.read()))
             except:
-                print 'Error loading url {0}'.format(url)
-                raise
-            self.response_available.emit(request_id, QtCore.QByteArray(response.read()))
+                pass
             queue.task_done()
 
 class OAuthWrapper(QtCore.QObject):
@@ -70,7 +69,10 @@ class OAuthWrapper(QtCore.QObject):
             oauth_request = oauth.OAuthRequest.from_consumer_and_token(self.consumer, self.access_token, http_url=url)
             oauth_request.sign_request(self.signature_method, self.consumer, self.access_token)
             url = oauth_request.to_url()
-        response = urllib2.urlopen(url)
+        try:
+            response = urllib2.urlopen(url)
+        except:
+            return ''
         return response.read()
 
     def request_async(self, url, callback, priority=3, skip_auth=False):

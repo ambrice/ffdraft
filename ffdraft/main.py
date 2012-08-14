@@ -6,7 +6,8 @@ import os
 import urllib2
 from xml.etree import ElementTree
 from PyQt4 import QtCore, QtGui
-from ffdraft.utils import EggTimer, SelectionOrder
+from ffdraft.utils import EggTimer
+from ffdraft.ticker import Ticker
 from ffdraft.dialogs import TeamDialog, AddPlayerDialog, WebAuthDialog
 from ffdraft.yahoo.auth import OAuthWrapper
 
@@ -129,7 +130,7 @@ class MainWindow(QtGui.QMainWindow):
     def about(self):
         QtGui.QMessageBox.about(self, 'About Fantasy Football Draft',
                 'Fantasy Football Draft version ' + self.version + '\n\n'
-                +'Copyright (C) 2007-2011 Aaron Brice (aaron.brice@gmail.com) \n\n'
+                +'Copyright (C) 2007-2012 Aaron Brice (aaron.brice@gmail.com) \n\n'
                 +'This program is Free Software, licensed under the GPLv2\n'
                 +'See the file COPYING for details\n')
 
@@ -169,16 +170,22 @@ class MainWidget(QtGui.QWidget):
         self.player_stats = {}
 
     def setup_ui(self):
-        self.timer_display = QtGui.QLCDNumber(self)
         self.pause_button = QtGui.QPushButton('Start', self)
         self.reset_button = QtGui.QPushButton('Reset', self)
-        self.selection_order = SelectionOrder()
+        button_layout = QtGui.QVBoxLayout()
+        button_layout.addWidget(self.pause_button)
+        button_layout.addWidget(self.reset_button)
+
+        self.timer_display = QtGui.QLCDNumber(self)
+        self.timer_display.setMinimumWidth(140)
+        self.ticker = Ticker()
         
         banner_layout = QtGui.QHBoxLayout()
+        banner_layout.addSpacing(140)
         banner_layout.addWidget(self.timer_display)
-        banner_layout.addWidget(self.pause_button)
-        banner_layout.addWidget(self.reset_button)
-        banner_layout.addWidget(self.selection_order)
+        banner_layout.addLayout(button_layout)
+        banner_layout.addWidget(self.ticker)
+        banner_layout.addSpacing(140)
 
         player_widget = self.setup_player_ui()
         avail_widget = self.setup_avail_ui()
@@ -199,9 +206,10 @@ class MainWidget(QtGui.QWidget):
     def setup_player_ui(self):
         widget = QtGui.QWidget(self)
 
-        player_label = QtGui.QLabel('Player', widget)
         self.player_image_view = QtGui.QLabel(widget)
         self.player_image_view.setAlignment(QtCore.Qt.AlignCenter)
+        self.player_label = QtGui.QLabel('Player', widget)
+        self.player_label.setAlignment(QtCore.Qt.AlignHCenter)
         statistics_label = QtGui.QLabel('2011 Statistics', widget)
         self.player_stats_table = QtGui.QTableWidget(widget)
         self.player_stats_table.setAlternatingRowColors(True)
@@ -215,8 +223,10 @@ class MainWidget(QtGui.QWidget):
         self.player_stats_table.horizontalHeader().hide()
 
         layout = QtGui.QVBoxLayout()
-        layout.addWidget(player_label)
+        layout.addSpacing(40)
         layout.addWidget(self.player_image_view)
+        layout.addWidget(self.player_label)
+        layout.addSpacing(40)
         layout.addWidget(statistics_label)
         layout.addWidget(self.player_stats_table)
         widget.setLayout(layout)
@@ -291,7 +301,11 @@ class MainWidget(QtGui.QWidget):
             old_team_list = self.team_list[:]
             self.team_list = dlg.get_team_list()
             if len(old_team_list) != len(self.team_list) or any(i != j for i, j in zip(old_team_list, self.team_list)):
-                self.set_draft_view()
+                ticker_model = []
+                for team in self.team_list:
+                    img_url = models.Team.find_by_name(team).img_url
+                    ticker_model.append( { 'name': team, 'img_url': img_url } )
+                self.ticker.set_teams(ticker_model)
 
     def set_draft_view(self):
         while self.drafted_view.count():
@@ -309,9 +323,6 @@ class MainWidget(QtGui.QWidget):
         self.league.current_round = 1
         self.league.current_draft_index = 0
         self.league.save()
-        #self.round_field.setText(str(self.league.current_round))
-        #self.drafting_field.setText(self.get_team(0))
-        #self.next_field.setText(self.get_team(1))
         self.previous_picks_list.clear()
 
     def next_draft_idx(self):
@@ -377,9 +388,7 @@ class MainWidget(QtGui.QWidget):
 
         self.league.current_draft_index = next_idx
         self.league.save()
-        #self.round_field.setText(str(self.league.current_round))
-        #self.drafting_field.setText(self.get_team())
-        #self.next_field.setText(self.get_team(self.next_draft_idx()))
+        self.ticker.set_next_team()
 
         # Make sure the current team is visible in the toolbox
         self.drafted_view.setCurrentIndex(self.league.current_draft_index)
@@ -589,7 +598,7 @@ class MainWidget(QtGui.QWidget):
         team_model = models.TeamModel(self.league.name)
         self.team_list = team_model.team_names()
 
-        team_icons = []
+        ticker_model = []
         self.drafted_model = {}
         for team in self.team_list:
             self.drafted_model[team] = models.DraftedPlayerModel(team)
@@ -598,16 +607,9 @@ class MainWidget(QtGui.QWidget):
             tview.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
             self.drafted_view.addItem(tview, team)
             img_url = models.Team.find_by_name(team).img_url
-            image = urllib2.urlopen(img_url).read()
-            pixmap = QtGui.QPixmap()
-            pixmap.loadFromData(image)
-            #team_icons.append(QtGui.QIcon(pixmap))
-            team_icons.append(pixmap)
+            ticker_model.append( { 'name': team, 'img_url': img_url } )
 
-        self.selection_order.set_teams(self.team_list, team_icons)
-        #self.round_field.setText(str(self.league.current_round))
-        #self.drafting_field.setText(self.get_team(self.league.current_draft_index))
-        #self.next_field.setText(self.get_team(self.next_draft_idx()))
+        self.ticker.set_teams(ticker_model, self.league.current_round, self.league.current_draft_index)
         self.previous_picks_list.clear()
 
     def switch_league(self):
@@ -686,6 +688,7 @@ class MainWidget(QtGui.QWidget):
 
 
     def show_player_data(self, player):
+        self.player_label.setText(player.name)
         self.player_image_view.setPixmap(self.player_image[player.id])
         self.player_stats_table.clear()
         self.player_stats_table.setRowCount(len(self.player_stats[player.id]))

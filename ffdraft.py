@@ -31,7 +31,7 @@ if __name__ == "__main__":
         f.close()
     db = sys.argv[1] if len(sys.argv) > 1 else None
     mainWin = MainWindow(db)
-    mainWin.resize(1200,1000)
+    mainWin.resize(1600,1000)
     mainWin.show()
     sys.exit(app.exec_())
 
