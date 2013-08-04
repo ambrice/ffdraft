@@ -68,6 +68,7 @@ class League(Base):
     time_limit = Column(Integer)
     autopick = Column(Integer)
     active = Column(Boolean)
+    roster_count = Column(Integer)
 
     @staticmethod
     def total_count():
@@ -100,6 +101,19 @@ class League(Base):
         session.commit()
         return leagues
 
+    @staticmethod
+    def set_roster(xml):
+        root = ElementTree.fromstring(xml)
+        remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
+        league_yahoo_id = root.findtext('league/league_id')
+        league = session.query(League).filter_by(yahoo_id=league_yahoo_id).one()
+        count = 0
+        for position in root.findall('league/settings/roster_positions/roster_position'):
+            count += int(position.findtext('count'))
+        league.roster_count = count
+        session.add(league)
+        session.commit()
+
     def __init__(self, name, yahoo_id=None):
         self.name = name
         self.yahoo_id = yahoo_id
@@ -108,6 +122,7 @@ class League(Base):
         self.time_limit = 120
         self.autopick = 1
         self.active = False
+        self.roster_count = 0
 
     def __repr__(self):
         return "<League('{0}')>".format(self.name)
@@ -145,7 +160,6 @@ class Team(Base):
 
     @staticmethod
     def load_from_xml(xml):
-        print(xml)
         root = ElementTree.fromstring(xml)
         remove_namespace(root, 'http://fantasysports.yahooapis.com/fantasy/v2/base.rng')
         league_yahoo_id = root.findtext('league/league_id')
@@ -317,8 +331,8 @@ class TeamModel(QtCore.QAbstractListModel):
         self.endInsertRows()
 
     def move_up(self, row):
-        t1 = session.query(Team).filter_by(order=row).first()
-        t2 = session.query(Team).filter_by(order=row-1).first()
+        t1 = session.query(Team).filter_by(league_id=self.league.id, order=row).first()
+        t2 = session.query(Team).filter_by(league_id=self.league.id, order=row-1).first()
         t1.order = row-1
         t2.order = row
         session.add(t1)
@@ -327,8 +341,8 @@ class TeamModel(QtCore.QAbstractListModel):
         self.dataChanged.emit(self.index(row-1,0), self.index(row,0))
 
     def move_down(self, row):
-        t1 = session.query(Team).filter_by(order=row).first()
-        t2 = session.query(Team).filter_by(order=row+1).first()
+        t1 = session.query(Team).filter_by(league_id=self.league.id, order=row).first()
+        t2 = session.query(Team).filter_by(league_id=self.league.id, order=row+1).first()
         t1.order = row+1
         t2.order = row
         session.add(t1)

@@ -14,7 +14,7 @@ from ffdraft.yahoo.auth import OAuthWrapper
 YAHOO_URL = 'http://fantasysports.yahooapis.com/fantasy/v2'
 # 257 is the id for NFL season 2011, each year have to update that from
 # http://developer.yahoo.com/fantasysports/guide/game-resource.html
-YAHOO_LAST_SEASON_ID = 257
+YAHOO_LAST_SEASON_ID = 314
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, dbfile=None):
@@ -199,8 +199,10 @@ class MainWidget(QtGui.QWidget):
         #splitter.setSizes([200, 600, 200])
 
         top_layout = QtGui.QVBoxLayout()
+        top_layout.addSpacing(40)
         top_layout.addLayout(banner_layout)
         top_layout.addWidget(splitter)
+        top_layout.addSpacing(40)
         self.setLayout(top_layout)
 
     def setup_player_ui(self):
@@ -293,6 +295,7 @@ class MainWidget(QtGui.QWidget):
         self.load_avail(filename)
 
     def edit_teams(self):
+        print 'league name: ' + self.league.name
         dlg = TeamDialog(self.league.name, self.team_list, self.timer.countdown, self.league.autopick)
         if (dlg.exec_() == QtGui.QDialog.Accepted):
             self.league.time_limit = dlg.get_time_limit()
@@ -301,11 +304,12 @@ class MainWidget(QtGui.QWidget):
             old_team_list = self.team_list[:]
             self.team_list = dlg.get_team_list()
             if len(old_team_list) != len(self.team_list) or any(i != j for i, j in zip(old_team_list, self.team_list)):
+                self.set_draft_view()
                 ticker_model = []
                 for team in self.team_list:
                     img_url = models.Team.find_by_name(team).img_url
                     ticker_model.append( { 'name': team, 'img_url': img_url } )
-                self.ticker.set_teams(ticker_model)
+                self.ticker.set_teams(ticker_model, self.league.roster_count)
 
     def set_draft_view(self):
         while self.drafted_view.count():
@@ -370,7 +374,7 @@ class MainWidget(QtGui.QWidget):
         if name == '':
             return
         position = str(dlg.position_combo_box.currentText())
-        player = models.Player(0, 0, name, '?', 0, position)
+        player = models.Player(0, 0, name, '?', 0, position, None)
         self.avail_model.add_player(player)
 
         team = self.get_team()
@@ -389,6 +393,10 @@ class MainWidget(QtGui.QWidget):
         self.league.current_draft_index = next_idx
         self.league.save()
         self.ticker.set_next_team()
+
+        if self.league.current_round > self.league.roster_count:
+            self.timer.pause()
+            return
 
         # Make sure the current team is visible in the toolbox
         self.drafted_view.setCurrentIndex(self.league.current_draft_index)
@@ -515,11 +523,11 @@ class MainWidget(QtGui.QWidget):
         # Loop through the draft view and write all the drafted players
         for i in xrange(self.drafted_view.count()):
             team = self.get_team(i)
-            list = self.drafted_view.widget(i)
+            mylist = self.drafted_view.widget(i).model()
             f.write(str(team) + '\n')
             f.write('-' * len(str(team)))
             f.write('\n')
-            players = [ list.item(i).text() for i in xrange(list.count()) ]
+            players = [ mylist.index(i, 0).data().toString() for i in xrange(mylist.count()) ]
             for player in players:
                 f.write(str(player) + '\n')
             f.write('\n\n')
@@ -577,6 +585,9 @@ class MainWidget(QtGui.QWidget):
             self.progress.setValue(2)
             teamsxml = self.yahoo.request(url)
             models.Team.load_from_xml(teamsxml)
+            url = '{0}/league/nfl.l.{1}/settings'.format(YAHOO_URL, league.yahoo_id)
+            settingsxml = self.yahoo.request(url)
+            models.League.set_roster(settingsxml)
         models.Player.clear()
         for start in xrange(0,800,25):
             self.progress.setValue(self.progress.value() + 1)
@@ -594,9 +605,13 @@ class MainWidget(QtGui.QWidget):
         self.init_league()
 
     def init_league(self):
+        while self.drafted_view.count():
+            self.drafted_view.removeItem(0)
+
         self.timer.set_countdown(self.league.time_limit)
         team_model = models.TeamModel(self.league.name)
         self.team_list = team_model.team_names()
+        self.last_round = self.league.roster_count
 
         ticker_model = []
         self.drafted_model = {}
@@ -609,7 +624,7 @@ class MainWidget(QtGui.QWidget):
             img_url = models.Team.find_by_name(team).img_url
             ticker_model.append( { 'name': team, 'img_url': img_url } )
 
-        self.ticker.set_teams(ticker_model, self.league.current_round, self.league.current_draft_index)
+        self.ticker.set_teams(ticker_model, self.league.roster_count, self.league.current_round, self.league.current_draft_index)
         self.previous_picks_list.clear()
 
     def switch_league(self):
