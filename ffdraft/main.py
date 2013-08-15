@@ -3,7 +3,6 @@
 import re
 import ffdraft.models as models
 import os
-import urllib2
 from xml.etree import ElementTree
 from PyQt4 import QtCore, QtGui
 from ffdraft.utils import EggTimer
@@ -12,9 +11,9 @@ from ffdraft.dialogs import TeamDialog, AddPlayerDialog, WebAuthDialog
 from ffdraft.yahoo.auth import OAuthWrapper
 
 YAHOO_URL = 'http://fantasysports.yahooapis.com/fantasy/v2'
-# 257 is the id for NFL season 2011, each year have to update that from
+# 314 is the id for NFL season 2012, each year have to update that from
 # http://developer.yahoo.com/fantasysports/guide/game-resource.html
-YAHOO_LAST_SEASON_ID = 314
+YAHOO_LAST_SEASON_ID = 273
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, dbfile=None):
@@ -26,7 +25,7 @@ class MainWindow(QtGui.QMainWindow):
         self.createMenus()
         self.createStatusBar()
         self.setWindowTitle('Fantasy Football Draft')
-        self.version = '2012-08'
+        self.version = '2013-08'
 
     def createActions(self):
         self.newAct = QtGui.QAction('&New Session', self)
@@ -199,10 +198,10 @@ class MainWidget(QtGui.QWidget):
         #splitter.setSizes([200, 600, 200])
 
         top_layout = QtGui.QVBoxLayout()
-        top_layout.addSpacing(40)
+        top_layout.addSpacing(20)
         top_layout.addLayout(banner_layout)
         top_layout.addWidget(splitter)
-        top_layout.addSpacing(40)
+        top_layout.addSpacing(10)
         self.setLayout(top_layout)
 
     def setup_player_ui(self):
@@ -212,7 +211,7 @@ class MainWidget(QtGui.QWidget):
         self.player_image_view.setAlignment(QtCore.Qt.AlignCenter)
         self.player_label = QtGui.QLabel('Player', widget)
         self.player_label.setAlignment(QtCore.Qt.AlignHCenter)
-        statistics_label = QtGui.QLabel('2011 Statistics', widget)
+        statistics_label = QtGui.QLabel('2012 Statistics', widget)
         self.player_stats_table = QtGui.QTableWidget(widget)
         self.player_stats_table.setAlternatingRowColors(True)
         self.player_stats_table.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
@@ -225,10 +224,10 @@ class MainWidget(QtGui.QWidget):
         self.player_stats_table.horizontalHeader().hide()
 
         layout = QtGui.QVBoxLayout()
-        layout.addSpacing(40)
+        layout.addSpacing(10)
         layout.addWidget(self.player_image_view)
         layout.addWidget(self.player_label)
-        layout.addSpacing(40)
+        layout.addSpacing(10)
         layout.addWidget(statistics_label)
         layout.addWidget(self.player_stats_table)
         widget.setLayout(layout)
@@ -678,6 +677,7 @@ class MainWidget(QtGui.QWidget):
         try:
             self.player_image[player.id] = QtGui.QPixmap()
             self.player_image[player.id].loadFromData(image)
+            self.player_image[player.id] = self.player_image[player.id].scaledToHeight(600)
             if self.player_stats.has_key(player.id):
                 self.show_player_data(player)
         except Exception as e:
