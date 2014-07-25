@@ -5,8 +5,7 @@ import ffdraft.models as models
 
 models.set_database(sys.argv[1])
 league = models.League.active_league()
-for t in league.teams:
-    team = models.Team.find_by_name(t.name)
+for team in league.teams:
     print team.name
     print '-' * len(team.name)
     for draft in team.drafted:
