@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ui/ui_addplayerdialog.ui'
 #
-# Created: Mon Jul  9 08:53:21 2012
-#      by: PyQt4 UI code generator 4.9.1
+# Created: Wed Aug 20 16:45:51 2014
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -12,7 +12,16 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    _fromUtf8 = lambda s: s
+    def _fromUtf8(s):
+        return s
+
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
 
 class Ui_AddPlayerDialog(object):
     def setupUi(self, AddPlayerDialog):
@@ -46,16 +55,16 @@ class Ui_AddPlayerDialog(object):
         QtCore.QMetaObject.connectSlotsByName(AddPlayerDialog)
 
     def retranslateUi(self, AddPlayerDialog):
-        AddPlayerDialog.setWindowTitle(QtGui.QApplication.translate("AddPlayerDialog", "Add Player", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("AddPlayerDialog", "Player Name:", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("AddPlayerDialog", "Position:", None, QtGui.QApplication.UnicodeUTF8))
+        AddPlayerDialog.setWindowTitle(_translate("AddPlayerDialog", "Add Player", None))
+        self.label_2.setText(_translate("AddPlayerDialog", "Player Name:", None))
+        self.label.setText(_translate("AddPlayerDialog", "Position:", None))
 
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'ui/ui_mainwidget.ui'
 #
-# Created: Mon Jul  9 08:53:21 2012
-#      by: PyQt4 UI code generator 4.9.1
+# Created: Wed Aug 20 16:46:01 2014
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -64,7 +73,16 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    _fromUtf8 = lambda s: s
+    def _fromUtf8(s):
+        return s
+
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
 
 class Ui_MainWidget(object):
     def setupUi(self, MainWidget):
@@ -283,21 +301,21 @@ class Ui_MainWidget(object):
         QtCore.QMetaObject.connectSlotsByName(MainWidget)
 
     def retranslateUi(self, MainWidget):
-        MainWidget.setWindowTitle(QtGui.QApplication.translate("MainWidget", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.pause_button.setText(QtGui.QApplication.translate("MainWidget", "Start", None, QtGui.QApplication.UnicodeUTF8))
-        self.reset_button.setText(QtGui.QApplication.translate("MainWidget", "Reset", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("MainWidget", "Round:", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("MainWidget", "Drafting: ", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_3.setText(QtGui.QApplication.translate("MainWidget", "Next:", None, QtGui.QApplication.UnicodeUTF8))
-        self.player_name_label.setText(QtGui.QApplication.translate("MainWidget", "Player", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_4.setText(QtGui.QApplication.translate("MainWidget", "2010 Statistics:", None, QtGui.QApplication.UnicodeUTF8))
+        MainWidget.setWindowTitle(_translate("MainWidget", "Form", None))
+        self.pause_button.setText(_translate("MainWidget", "Start", None))
+        self.reset_button.setText(_translate("MainWidget", "Reset", None))
+        self.label.setText(_translate("MainWidget", "Round:", None))
+        self.label_2.setText(_translate("MainWidget", "Drafting: ", None))
+        self.label_3.setText(_translate("MainWidget", "Next:", None))
+        self.player_name_label.setText(_translate("MainWidget", "Player", None))
+        self.label_4.setText(_translate("MainWidget", "2013 Statistics:", None))
 
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'ui/ui_teamdialog.ui'
 #
-# Created: Mon Jul  9 08:53:21 2012
-#      by: PyQt4 UI code generator 4.9.1
+# Created: Wed Aug 20 16:46:09 2014
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -306,7 +324,16 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    _fromUtf8 = lambda s: s
+    def _fromUtf8(s):
+        return s
+
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
 
 class Ui_TeamDialog(object):
     def setupUi(self, TeamDialog):
@@ -403,23 +430,23 @@ class Ui_TeamDialog(object):
         QtCore.QMetaObject.connectSlotsByName(TeamDialog)
 
     def retranslateUi(self, TeamDialog):
-        TeamDialog.setWindowTitle(QtGui.QApplication.translate("TeamDialog", "Team Configuration", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("TeamDialog", "Team Name", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("TeamDialog", "Manager Name", None, QtGui.QApplication.UnicodeUTF8))
-        self.add_button.setText(QtGui.QApplication.translate("TeamDialog", "Add", None, QtGui.QApplication.UnicodeUTF8))
-        self.move_up_button.setText(QtGui.QApplication.translate("TeamDialog", "/\\", None, QtGui.QApplication.UnicodeUTF8))
-        self.move_down_button.setText(QtGui.QApplication.translate("TeamDialog", "\\/", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_3.setText(QtGui.QApplication.translate("TeamDialog", "Pick Time Limit", None, QtGui.QApplication.UnicodeUTF8))
-        self.timeEdit.setDisplayFormat(QtGui.QApplication.translate("TeamDialog", "m:ss", None, QtGui.QApplication.UnicodeUTF8))
-        self.autoPick.setToolTip(QtGui.QApplication.translate("TeamDialog", "Automatically take top-rated player when timer expires", None, QtGui.QApplication.UnicodeUTF8))
-        self.autoPick.setText(QtGui.QApplication.translate("TeamDialog", "Auto-pick on expire?", None, QtGui.QApplication.UnicodeUTF8))
+        TeamDialog.setWindowTitle(_translate("TeamDialog", "Team Configuration", None))
+        self.label.setText(_translate("TeamDialog", "Team Name", None))
+        self.label_2.setText(_translate("TeamDialog", "Manager Name", None))
+        self.add_button.setText(_translate("TeamDialog", "Add", None))
+        self.move_up_button.setText(_translate("TeamDialog", "/\\", None))
+        self.move_down_button.setText(_translate("TeamDialog", "\\/", None))
+        self.label_3.setText(_translate("TeamDialog", "Pick Time Limit", None))
+        self.timeEdit.setDisplayFormat(_translate("TeamDialog", "m:ss", None))
+        self.autoPick.setToolTip(_translate("TeamDialog", "Automatically take top-rated player when timer expires", None))
+        self.autoPick.setText(_translate("TeamDialog", "Auto-pick on expire?", None))
 
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'ui/ui_webauth.ui'
 #
-# Created: Mon Jul  9 08:53:22 2012
-#      by: PyQt4 UI code generator 4.9.1
+# Created: Wed Aug 20 16:46:19 2014
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -428,7 +455,16 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    _fromUtf8 = lambda s: s
+    def _fromUtf8(s):
+        return s
+
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
 
 class Ui_WebAuthDialog(object):
     def setupUi(self, WebAuthDialog):
@@ -458,9 +494,9 @@ class Ui_WebAuthDialog(object):
         QtCore.QMetaObject.connectSlotsByName(WebAuthDialog)
 
     def retranslateUi(self, WebAuthDialog):
-        WebAuthDialog.setWindowTitle(QtGui.QApplication.translate("WebAuthDialog", "Dialog", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("WebAuthDialog", "1. Log in to Yahoo!\n"
+        WebAuthDialog.setWindowTitle(_translate("WebAuthDialog", "Dialog", None))
+        self.label.setText(_translate("WebAuthDialog", "1. Log in to Yahoo!\n"
 "2.Allow ffdraft access to fantasy sports\n"
-"3.Enter verification code below:", None, QtGui.QApplication.UnicodeUTF8))
+"3.Enter verification code below:", None))
 
 from PyQt4 import QtWebKit
