@@ -17,20 +17,32 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # Read more about GNU General Public License :http://www.gnu.org/licenses/gpl.txt
 #
+import os
 import sys
+import ConfigParser
 from PyQt4 import QtGui
 from ffdraft.main import MainWindow
 
 if __name__ == "__main__":
+    try:
+        cfgfile = open(os.path.join(sys.path[0], 'ffdraft.cfg'))
+        config = ConfigParser.RawConfigParser()
+        config.readfp(cfgfile)
+        consumer_key = config.get('apikey', 'consumer_key')
+        consumer_secret = config.get('apikey', 'consumer_secret')
+    except:
+        print('No API keys found in ffdraft.cfg, see README')
+        sys.exit(0)
+
     app = QtGui.QApplication(sys.argv)
-    f = open("ffdraft.css")
+    f = open(os.path.join(sys.path[0], 'ffdraft.css'))
     try:
         css = f.read()
         app.setStyleSheet(css);
     finally:
         f.close()
     db = sys.argv[1] if len(sys.argv) > 1 else None
-    mainWin = MainWindow(db)
+    mainWin = MainWindow(db, consumer_key, consumer_secret)
     mainWin.resize(1600,1000)
     mainWin.show()
     sys.exit(app.exec_())

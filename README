@@ -2,8 +2,14 @@ Fantasy Football Draft program, for handling an offline fantasy football draft.
 
 Requires Python and the PyQt4 module.
 
-Python can be downloaded here: http://python.org/download/
+This version uses Yahoo Developer API.  To use it you need to sign up for an API key at:
 
-PyQt4 is here: http://www.riverbankcomputing.co.uk/software/pyqt/download
+https://developer.apps.yahoo.com/dashboard/createKey.html
 
-If running on windows, rename “ffdraft.py” to “ffdraft.pyw” to get rid of the dos window when you run it.
+Select "This app requires access to private user data" and select Fantasy Sports, Read Access.
+
+Create a file ffdraft.cfg in the same directory as ffdraft.py containing the Yahoo keys, like:
+
+[apikey]
+consumer_key: xxxxxxxx
+consumer_secret: yyyyyyyy

@@ -85,5 +85,5 @@ class WebAuthDialog(QtGui.QDialog, Ui_WebAuthDialog):
             self.webView.load(QtCore.QUrl(url))
 
     def resizeEvent(self, e):
-        print 'Dialog: {0}x{1}'.format(e.size().width(), e.size().height())
+        #print 'Dialog: {0}x{1}'.format(e.size().width(), e.size().height())
         QtGui.QDialog.resizeEvent(self, e)

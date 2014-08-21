@@ -6,10 +6,6 @@ import Queue
 import oauth.oauth as oauth
 from PyQt4 import QtCore
 
-# ffdraft API keys registered with yahoo developer network
-consumer_key='dj0yJmk9b1o2R1k2M3BDUFlqJmQ9WVdrOWNGQnhkMHB5TlRZbWNHbzlNalUzTVRJeE5UWXkmcz1jb25zdW1lcnNlY3JldCZ4PTE4'
-consumer_secret='67ccb3a016bfa61e7e159b3936c8700af0b2f630'
-
 token_url='https://api.login.yahoo.com/oauth/v2/get_request_token'
 auth_url='https://api.login.yahoo.com/oauth/v2/request_auth'
 access_url='https://api.login.yahoo.com/oauth/v2/get_token'
@@ -33,11 +29,11 @@ class RequestThread(QtCore.QThread):
             queue.task_done()
 
 class OAuthWrapper(QtCore.QObject):
-    def __init__(self, access_token_key=None, access_token_secret=None, session_handle=None, access_expires=None):
+    def __init__(self, consumer_key=None, consumer_secret=None):
         QtCore.QObject.__init__(self)
         self.consumer = oauth.OAuthConsumer(consumer_key, consumer_secret)
         self.signature_method = oauth.OAuthSignatureMethod_HMAC_SHA1()
-        self.set_access(access_token_key, access_token_secret, session_handle, access_expires)
+        self.set_access(None, None, None, None)
         self.token_update_callbacks = []
         self.request_threads = []
         # 5 worker threads
@@ -97,7 +93,7 @@ class OAuthWrapper(QtCore.QObject):
     def create_access_token(self):
         request_token = self.get_request_token()
         verifier = self.get_user_authorization(request_token)
-        self.access_token, self.session_handle, self.access_expires  = self.get_access_token(self, request_token, verifier)
+        self.access_token, self.session_handle, self.access_expires  = self.get_access_token(request_token, verifier)
 
     def get_request_token(self):
         # Step 1: Get a Request Token
@@ -150,6 +146,22 @@ class OAuthWrapper(QtCore.QObject):
             cb(self.access_token.key, self.access_token.secret, self.session_handle, self.access_expires)
 
 if __name__ == "__main__":
-    auth = OAuthWrapper()
-    token = auth.get_request_token()
-    print token.get_callback_url()
+    import os
+    import sys
+    import ConfigParser
+
+    cfgfile = open(os.path.join(sys.path[0], 'auth.cfg'))
+    config = ConfigParser.RawConfigParser()
+    config.readfp(cfgfile)
+    consumer_key = config.get('apikey', 'consumer_key')
+    consumer_secret = config.get('apikey', 'consumer_secret')
+
+    auth = OAuthWrapper(consumer_key, consumer_secret)
+    auth.create_access_token()
+    while True:
+        url = raw_input('URL: ')
+        if len(url) == 0:
+            sys.exit(0)
+        response = auth.request(url)
+        print(response)
+

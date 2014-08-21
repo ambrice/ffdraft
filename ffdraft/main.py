@@ -16,10 +16,10 @@ YAHOO_URL = 'http://fantasysports.yahooapis.com/fantasy/v2'
 YAHOO_LAST_SEASON_ID = 314
 
 class MainWindow(QtGui.QMainWindow):
-    def __init__(self, dbfile=None):
+    def __init__(self, dbfile=None, consumer_key=None, consumer_secret=None):
         QtGui.QMainWindow.__init__(self)
 
-        self.mainWidget = MainWidget(dbfile)
+        self.mainWidget = MainWidget(dbfile, None, consumer_key, consumer_secret)
         self.setCentralWidget(self.mainWidget)
         self.createActions()
         self.createMenus()
@@ -135,7 +135,7 @@ class MainWindow(QtGui.QMainWindow):
 
 
 class MainWidget(QtGui.QWidget):
-    def __init__(self, dbfile=None, parent = None):
+    def __init__(self, dbfile=None, parent=None, consumer_key=None, consumer_secret=None):
         QtGui.QWidget.__init__(self, parent)
 
         self.setup_ui()
@@ -158,7 +158,7 @@ class MainWidget(QtGui.QWidget):
         self.league = models.League('Unnamed')
 
         # Yahoo OAuth stuff
-        self.yahoo = OAuthWrapper()
+        self.yahoo = OAuthWrapper(consumer_key, consumer_secret)
         self.yahoo.add_token_update_callback(self.update_access_token)
 
         if dbfile:
@@ -294,7 +294,6 @@ class MainWidget(QtGui.QWidget):
         self.load_avail(filename)
 
     def edit_teams(self):
-        print 'league name: ' + self.league.name
         dlg = TeamDialog(self.league.name, self.team_list, self.timer.countdown, self.league.autopick)
         if (dlg.exec_() == QtGui.QDialog.Accepted):
             self.league.time_limit = dlg.get_time_limit()
