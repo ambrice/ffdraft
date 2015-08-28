@@ -308,7 +308,7 @@ class Ui_MainWidget(object):
         self.label_2.setText(_translate("MainWidget", "Drafting: ", None))
         self.label_3.setText(_translate("MainWidget", "Next:", None))
         self.player_name_label.setText(_translate("MainWidget", "Player", None))
-        self.label_4.setText(_translate("MainWidget", "2013 Statistics:", None))
+        self.label_4.setText(_translate("MainWidget", "2014 Statistics:", None))
 
 # -*- coding: utf-8 -*-
 

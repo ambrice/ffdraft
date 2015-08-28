@@ -294,7 +294,7 @@
           <item row="0" column="1" rowspan="2">
            <widget class="QLabel" name="label_4">
             <property name="text">
-             <string>2013 Statistics:</string>
+             <string>2014 Statistics:</string>
             </property>
            </widget>
           </item>
