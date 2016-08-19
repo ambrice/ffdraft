@@ -46,7 +46,7 @@ class Ticker(QtGui.QWidget):
 
     def set_next_team(self):
         self.ticker.removeTeam(1)
-        next_round = self.ticker.isNextRound().toBool()
+        next_round = self.ticker.isNextRound()
         if next_round:
             self.ticker.removeTeam(0)
         try:

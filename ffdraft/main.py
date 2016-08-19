@@ -11,9 +11,9 @@ from ffdraft.dialogs import TeamDialog, AddPlayerDialog, WebAuthDialog
 from ffdraft.yahoo.auth import OAuthWrapper
 
 YAHOO_URL = 'http://fantasysports.yahooapis.com/fantasy/v2'
-# 348 is the id for NFL season 2015, each year have to update that from
+# 359 is the id for NFL season 2016, each year have to update that from
 # http://developer.yahoo.com/fantasysports/guide/game-resource.html
-YAHOO_LAST_SEASON_ID = 331
+YAHOO_LAST_SEASON_ID = 348
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, dbfile=None, consumer_key=None, consumer_secret=None):
@@ -25,7 +25,7 @@ class MainWindow(QtGui.QMainWindow):
         self.createMenus()
         self.createStatusBar()
         self.setWindowTitle('Fantasy Football Draft')
-        self.version = '2015-08'
+        self.version = '2016-08'
 
     def createActions(self):
         self.newAct = QtGui.QAction('&New Session', self)
@@ -129,7 +129,7 @@ class MainWindow(QtGui.QMainWindow):
     def about(self):
         QtGui.QMessageBox.about(self, 'About Fantasy Football Draft',
                 'Fantasy Football Draft version ' + self.version + '\n\n'
-                +'Copyright (C) 2007-2015 Aaron Brice (aaron.brice@gmail.com) \n\n'
+                +'Copyright (C) 2007-2016 Aaron Brice (aaron.brice@gmail.com) \n\n'
                 +'This program is Free Software, licensed under the GPLv2\n'
                 +'See the file COPYING for details\n')
 
@@ -211,7 +211,7 @@ class MainWidget(QtGui.QWidget):
         self.player_image_view.setAlignment(QtCore.Qt.AlignCenter)
         self.player_label = QtGui.QLabel('Player', widget)
         self.player_label.setAlignment(QtCore.Qt.AlignHCenter)
-        statistics_label = QtGui.QLabel('2014 Statistics', widget)
+        statistics_label = QtGui.QLabel('2015 Statistics', widget)
         self.player_stats_table = QtGui.QTableWidget(widget)
         self.player_stats_table.setAlternatingRowColors(True)
         self.player_stats_table.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
